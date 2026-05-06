@@ -1,0 +1,36 @@
+from django.urls import path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from . import views
+
+urlpatterns = [
+    # Auth
+    path("auth/register/", views.RegisterView.as_view()),
+    path("auth/login/", TokenObtainPairView.as_view()),
+    path("auth/refresh/", TokenRefreshView.as_view()),
+    path("auth/me/", views.MeView.as_view()),
+
+    # Departments
+    path("departments/", views.DepartmentListView.as_view()),
+    path("departments/<int:pk>/", views.DepartmentDetailView.as_view()),
+
+    # Citizen
+    path("complaints/", views.CitizenComplaintListCreateView.as_view()),
+    path("complaints/<int:pk>/", views.CitizenComplaintDetailView.as_view()),
+    path("complaints/<int:pk>/feedback/", views.CitizenFeedbackView.as_view()),
+    path("track/<str:ticket_id>/", views.track_complaint),
+
+    # Admin
+    path("admin/complaints/", views.AdminComplaintListView.as_view()),
+    path("admin/complaints/<int:pk>/", views.AdminComplaintUpdateView.as_view()),
+    path("admin/stats/", views.AdminDashboardStatsView.as_view()),
+    path("admin/users/", views.AdminUserListView.as_view()),
+    path("admin/create-officer/", views.AdminCreateOfficerView.as_view()),
+
+    # Officer
+    path("officer/complaints/", views.OfficerComplaintListView.as_view()),
+    path("officer/complaints/<int:pk>/", views.OfficerComplaintUpdateView.as_view()),
+
+    # Notifications
+    path("notifications/", views.NotificationListView.as_view()),
+    path("notifications/<int:pk>/read/", views.mark_notification_read),
+]
