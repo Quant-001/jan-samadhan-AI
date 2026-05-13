@@ -898,3 +898,4 @@ Jan Samadhan AI is a CPGRAMS-inspired grievance redress platform with an AI/NLP 
 - This `README.md` is the single main documentation file for project structure and architecture.
 - The system is built around role-based dashboards and a strict officer chain.
 - Public home page statistics come from `GET /api/public/stats/`.
+# jan-samadhan-AI
