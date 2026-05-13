@@ -75,7 +75,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "id", "ticket_id", "title", "description", "original_language",
             "translated_description", "category", "ai_category", "ai_confidence",
             "priority", "status", "department", "department_name", "assigned_officer",
-            "officer_name", "citizen_name", "complainant_name", "valid_id_number",
+            "officer_name", "citizen_name", "complainant_name", "complainant_email",
             "location", "latitude", "longitude",
             "sector", "pin_code", "routing_note",
             "attachment", "proof_of_resolution", "officer_remarks", "admin_override_note",
@@ -101,7 +101,7 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Complaint
         fields = [
-            "complainant_name", "valid_id_number", "title", "description", "location", "sector", "pin_code",
+            "complainant_name", "complainant_email", "title", "description", "location", "sector", "pin_code",
             "latitude", "longitude", "attachment",
         ]
 
@@ -116,6 +116,10 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
         from .ai_service import classify_complaint
         from django.conf import settings
         from django.utils import timezone
+
+        request = self.context.get("request")
+        if request and not validated_data.get("complainant_email"):
+            validated_data["complainant_email"] = request.user.email
 
         text = validated_data["description"]
         ai_result = classify_complaint(text)

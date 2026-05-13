@@ -41,6 +41,22 @@ function suggestTitleFromSpeech(text) {
   return clean.length > 64 ? `${clean.slice(0, 61).trim()}...` : clean;
 }
 
+function getApiErrorMessage(err, fallback) {
+  const data = err.response?.data;
+  if (!data) return err.message || fallback;
+  if (typeof data === "string") return data;
+  if (data.detail) return data.detail;
+  if (data.error) return data.error;
+
+  const fieldErrors = Object.entries(data)
+    .flatMap(([field, value]) => {
+      const messages = Array.isArray(value) ? value : [value];
+      return messages.map((message) => `${field}: ${message}`);
+    })
+    .join(" ");
+  return fieldErrors || fallback;
+}
+
 export default function CitizenDashboard() {
   const { user } = useAuth();
   const { language, t } = useLanguage();
@@ -54,7 +70,7 @@ export default function CitizenDashboard() {
   const [voiceInterim, setVoiceInterim] = useState("");
   const emptyForm = {
     complainant_name: user?.first_name || "",
-    valid_id_number: "",
+    complainant_email: user?.email || "",
     title: "",
     description: "",
     location: "",
@@ -93,14 +109,14 @@ export default function CitizenDashboard() {
       setShowForm(false);
       setForm(emptyForm);
     },
-    onError: (err) => toast.error(err.response?.data?.detail || t("Submission failed")),
+    onError: (err) => toast.error(getApiErrorMessage(err, t("Submission failed"))),
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const fd = new FormData();
     fd.append("complainant_name", form.complainant_name);
-    fd.append("valid_id_number", form.valid_id_number);
+    fd.append("complainant_email", form.complainant_email);
     fd.append("title", form.title);
     fd.append("description", form.description);
     fd.append("location", form.location);
@@ -285,10 +301,10 @@ export default function CitizenDashboard() {
                   placeholder={t("Full name of complainant")} required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t("Valid ID Number")}</label>
-                <input className="input" value={form.valid_id_number}
-                  onChange={(e) => setForm({ ...form, valid_id_number: e.target.value })}
-                  placeholder={t("Aadhaar / Voter ID / PAN / local ID")} required />
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("Email")}</label>
+                <input className="input" type="email" value={form.complainant_email}
+                  onChange={(e) => setForm({ ...form, complainant_email: e.target.value })}
+                  placeholder={t("name@example.com")} required />
               </div>
             </div>
             <div>
@@ -415,7 +431,7 @@ export default function CitizenDashboard() {
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                     <div><span className="text-gray-400">{t("AI Category")}:</span> <span className="font-medium">{t(c.ai_category)} ({Math.round(c.ai_confidence * 100)}%)</span></div>
                     {c.complainant_name && <div><span className="text-gray-400">{t("Citizen")}:</span> <span className="font-medium">{c.complainant_name}</span></div>}
-                    {c.valid_id_number && <div><span className="text-gray-400">{t("Valid ID")}:</span> <span className="font-medium">{c.valid_id_number}</span></div>}
+                    {c.complainant_email && <div><span className="text-gray-400">{t("Email")}:</span> <span className="font-medium">{c.complainant_email}</span></div>}
                     <div><span className="text-gray-400">{t("SLA Deadline")}:</span> <span className="font-medium">{formatDate(c.sla_deadline)}</span></div>
                     {c.officer_name && <div><span className="text-gray-400">{t("Officer")}:</span> <span className="font-medium">{c.officer_name}</span></div>}
                     {(c.sector || c.pin_code) && <div><span className="text-gray-400">{t("Area")}:</span> <span className="font-medium">{[c.sector, c.pin_code].filter(Boolean).join(" / ")}</span></div>}
