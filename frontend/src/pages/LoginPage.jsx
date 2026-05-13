@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { authApi } from "../api";
 import toast from "react-hot-toast";
-import { LogIn, Search } from "lucide-react";
+import { LogIn, MailCheck, RefreshCw, Search } from "lucide-react";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from;
+  const verificationEmail = location.state?.verificationEmail || "";
+  const verificationMessage = location.state?.verificationMessage;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,6 +46,24 @@ export default function LoginPage() {
     }
   };
 
+  const handleResendVerification = async () => {
+    const identifier = verificationEmail || form.username.trim();
+    if (!identifier) {
+      toast.error("Enter your username or email first.");
+      return;
+    }
+
+    setResending(true);
+    try {
+      const { data } = await authApi.resendVerification({ identifier });
+      toast.success(data?.detail || "Verification email sent.");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not send verification email.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const demoAccounts = [
     { label: "Electricity Officer", username: "officer_electricity", password: "Officer@1234" },
     { label: "Water Head", username: "head_water", password: "Head@1234" },
@@ -64,6 +86,14 @@ export default function LoginPage() {
             <h1 className="text-2xl font-extrabold text-slate-950">Sign in</h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">Access citizen, officer, or admin dashboard</p>
           </div>
+          {verificationMessage && (
+            <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
+              <div className="flex items-start gap-2">
+                <MailCheck className="mt-0.5 shrink-0" size={17} />
+                <span>{verificationMessage}</span>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
@@ -90,6 +120,15 @@ export default function LoginPage() {
           <button type="submit" disabled={loading} className="btn-primary flex w-full items-center justify-center gap-2 py-2.5 text-base">
             <LogIn size={18} />
             {loading ? "Signing in..." : "Sign In"}
+          </button>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={resending}
+            className="btn-secondary flex w-full items-center justify-center gap-2 py-2.5 text-sm"
+          >
+            <RefreshCw size={16} className={resending ? "animate-spin" : ""} />
+            {resending ? "Sending verification..." : "Resend verification email"}
           </button>
         </form>
           <div className="mt-5 rounded border border-cyan-100 bg-cyan-50 p-3">

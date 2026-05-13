@@ -1,21 +1,57 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { complaintApi, departmentApi } from "../../api";
+import { complaintApi } from "../../api";
 import { PriorityBadge, StatusBadge, CategoryIcon, StatCard, LoadingSpinner, EmptyState } from "../../components/Shared";
 import { formatDate } from "../../utils/helpers";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../hooks/useLanguage";
 import toast from "react-hot-toast";
-import { Plus, X, FileText, MapPin } from "lucide-react";
+import { CheckCircle2, MapPin, Mic, MicOff, Plus, ShieldCheck, Volume2, X } from "lucide-react";
+
+const speechLanguageMap = {
+  en: "en-IN",
+  hi: "hi-IN",
+  as: "as-IN",
+  bn: "bn-IN",
+  brx: "hi-IN",
+  doi: "hi-IN",
+  gu: "gu-IN",
+  kn: "kn-IN",
+  ks: "ur-IN",
+  kok: "hi-IN",
+  mai: "hi-IN",
+  ml: "ml-IN",
+  mni: "hi-IN",
+  mr: "mr-IN",
+  ne: "ne-NP",
+  or: "or-IN",
+  pa: "pa-IN",
+  sa: "hi-IN",
+  sat: "hi-IN",
+  sd: "hi-IN",
+  ta: "ta-IN",
+  te: "te-IN",
+  ur: "ur-IN",
+};
+
+function suggestTitleFromSpeech(text) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  return clean.length > 64 ? `${clean.slice(0, 61).trim()}...` : clean;
+}
 
 export default function CitizenDashboard() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
+  const recognitionRef = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [voiceInterim, setVoiceInterim] = useState("");
   const emptyForm = {
     complainant_name: user?.first_name || "",
     valid_id_number: "",
@@ -42,6 +78,13 @@ export default function CitizenDashboard() {
     }
   }, [searchParams, setSearchParams]);
 
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
+
   const createMutation = useMutation({
     mutationFn: (fd) => complaintApi.create(fd),
     onSuccess: () => {
@@ -67,6 +110,93 @@ export default function CitizenDashboard() {
     createMutation.mutate(fd);
   };
 
+  const getRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = speechLanguageMap[language] || "en-IN";
+    return recognition;
+  };
+
+  const startVoiceAssistant = () => {
+    const recognition = getRecognition();
+    if (!recognition) {
+      toast.error(t("Voice typing is not supported in this browser. Try Chrome or Edge."));
+      return;
+    }
+
+    recognitionRef.current?.stop();
+    setVoiceInterim("");
+    setVoiceTranscript("");
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast.success(t("Listening now. Speak your complaint clearly."));
+    };
+
+    recognition.onresult = (event) => {
+      let finalText = "";
+      let interimText = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const text = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText += `${text} `;
+        else interimText += text;
+      }
+
+      if (finalText.trim()) {
+        const spokenText = finalText.replace(/\s+/g, " ").trim();
+        setVoiceTranscript((current) => [current, spokenText].filter(Boolean).join(" "));
+        setForm((current) => {
+          const description = [current.description, spokenText].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+          return {
+            ...current,
+            description,
+            title: current.title || suggestTitleFromSpeech(spokenText),
+          };
+        });
+      }
+      setVoiceInterim(interimText);
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      const message = event.error === "not-allowed"
+        ? t("Microphone permission was blocked.")
+        : t("Voice assistant stopped. Please try again.");
+      toast.error(message);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setVoiceInterim("");
+    };
+
+    recognition.start();
+  };
+
+  const stopVoiceAssistant = () => {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+  };
+
+  const speakComplaintGuide = () => {
+    if (!window.speechSynthesis) {
+      toast.error(t("Voice guide is not supported in this browser."));
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const guide = new SpeechSynthesisUtterance(
+      t("Tell your issue, location, nearby landmark, and how long the problem has happened.")
+    );
+    guide.lang = speechLanguageMap[language] || "en-IN";
+    window.speechSynthesis.speak(guide);
+  };
+
   const stats = [
     { label: t("Total Complaints"), value: complaints.length, icon: "📋", color: "blue" },
     { label: t("Pending"), value: complaints.filter((c) => c.status === "PENDING").length, icon: "⏳", color: "yellow" },
@@ -81,6 +211,11 @@ export default function CitizenDashboard() {
           <p className="text-sm font-bold uppercase tracking-wide text-cyan-300">{t("Citizen Dashboard")}</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight">{t("My Complaints")}</h1>
           <p className="mt-1 text-sm text-slate-300">{t("Welcome,")} {user?.first_name || user?.username}. {t("Submit, track, and rate grievances from one place.")}</p>
+          {user?.is_verified && (
+            <p className="mt-3 inline-flex items-center gap-2 rounded border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-emerald-200">
+              <ShieldCheck size={14} /> {t("Email verified")}
+            </p>
+          )}
         </div>
         <button onClick={() => setShowForm(true)} className="inline-flex items-center justify-center gap-2 rounded bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 hover:bg-cyan-300">
           <Plus size={16} /> {t("New Complaint")}
@@ -90,6 +225,12 @@ export default function CitizenDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {stats.map((s) => <StatCard key={s.label} {...s} />)}
       </div>
+
+      {user && !user.is_verified && (
+        <div className="mb-6 rounded border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+          {t("Please verify your email before submitting a complaint.")}
+        </div>
+      )}
 
       {showForm && (
         <div className="card mb-6 overflow-hidden">
@@ -125,6 +266,44 @@ export default function CitizenDashboard() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t("Description")} <span className="text-gray-400 font-normal">({t("Hindi or English both accepted")})</span>
               </label>
+              <div className="mb-2 rounded border border-cyan-100 bg-cyan-50 p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-slate-900">{t("Voice Assistant")}</p>
+                    <p className="text-xs font-semibold text-slate-600">{t("Speak your complaint and the form will fill the description.")}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={isListening ? stopVoiceAssistant : startVoiceAssistant}
+                      className={`inline-flex items-center gap-2 rounded px-3 py-2 text-sm font-black ${
+                        isListening
+                          ? "bg-red-600 text-white hover:bg-red-700"
+                          : "bg-slate-950 text-cyan-200 hover:bg-slate-800"
+                      }`}
+                    >
+                      {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                      {isListening ? t("Stop") : t("Speak")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={speakComplaintGuide}
+                      className="inline-flex items-center gap-2 rounded border border-cyan-200 bg-white px-3 py-2 text-sm font-black text-slate-800 hover:border-cyan-500"
+                    >
+                      <Volume2 size={16} /> {t("Guide")}
+                    </button>
+                  </div>
+                </div>
+                {(isListening || voiceTranscript || voiceInterim) && (
+                  <div className="mt-3 rounded border border-cyan-200 bg-white p-3 text-sm text-slate-700">
+                    <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-wide text-cyan-700">
+                      {isListening ? <Mic size={14} /> : <CheckCircle2 size={14} />}
+                      {isListening ? t("Listening") : t("Captured voice text")}
+                    </div>
+                    <p>{[voiceTranscript, voiceInterim].filter(Boolean).join(" ") || t("Start speaking after allowing microphone access.")}</p>
+                  </div>
+                )}
+              </div>
               <textarea className="input min-h-24 resize-y" value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 placeholder={t("Describe your complaint in detail. AI will auto-classify it.")} required />
@@ -153,12 +332,12 @@ export default function CitizenDashboard() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Complaint File / Picture")}</label>
-              <input type="file" accept="image/*,application/pdf" className="input text-sm"
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Complaint File / Picture / Audio")}</label>
+              <input type="file" accept="image/*,application/pdf,audio/*" className="input text-sm"
                 onChange={(e) => setForm({ ...form, attachment: e.target.files[0] })} />
             </div>
             <div className="flex gap-3">
-              <button type="submit" disabled={createMutation.isPending} className="btn-primary">
+              <button type="submit" disabled={createMutation.isPending || !user?.is_verified} className="btn-primary">
                 {createMutation.isPending ? t("Submitting...") : t("Submit Complaint")}
               </button>
               <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">{t("Cancel")}</button>
