@@ -13,7 +13,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production-use-strong-key")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0").split(",")
+def csv_env(name, default=""):
+    return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
+
+
+ALLOWED_HOSTS = csv_env(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,0.0.0.0,jan-samadhan-ai.onrender.com,jan-samadhan-backend.onrender.com",
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -135,15 +142,19 @@ SIMPLE_JWT = {
 }
 
 # --- CORS ---
-CORS_ALLOWED_ORIGINS = os.getenv(
+CORS_ALLOWED_ORIGINS = csv_env(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,http://localhost:3000"
-).split(",")
+    "http://localhost:5173,http://localhost:3000,https://jan-samadhan.vercel.app",
+)
+CORS_ALLOWED_ORIGIN_REGEXES = csv_env(
+    "CORS_ALLOWED_ORIGIN_REGEXES",
+    r"^https://.*\.vercel\.app$",
+)
 CORS_ALLOW_CREDENTIALS = True
-CSRF_TRUSTED_ORIGINS = os.getenv(
+CSRF_TRUSTED_ORIGINS = csv_env(
     "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:5173,http://localhost:3000"
-).split(",")
+    "http://localhost:5173,http://localhost:3000,https://jan-samadhan.vercel.app,https://*.vercel.app",
+)
 
 # --- Static & Media ---
 STATIC_URL = "/static/"
@@ -153,14 +164,22 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# --- Email (SMTP) ---
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# --- Email / Verification ---
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend"
+    if os.getenv("EMAIL_HOST_USER")
+    else "django.core.mail.backends.console.EmailBackend",
+)
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@jansamadhan.in")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "True") == "True"
+EMAIL_VERIFICATION_MAX_AGE_SECONDS = int(os.getenv("EMAIL_VERIFICATION_MAX_AGE_SECONDS", "172800"))
 
 # --- Axes (Brute-force protection) ---
 AXES_ENABLED = os.getenv("AXES_ENABLED", "False" if DEBUG else "True") == "True"

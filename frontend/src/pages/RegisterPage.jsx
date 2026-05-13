@@ -20,9 +20,17 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      await authApi.register(form);
-      toast.success("Account created! Please login.");
-      navigate("/login", { state: { from } });
+      const { data } = await authApi.register(form);
+      toast.success(data?.detail || "Account created. Check your email to verify it.");
+      navigate("/login", {
+        state: {
+          from,
+          verificationEmail: form.email,
+          verificationMessage: data?.email_sent
+            ? "Verification email sent. Please check your inbox."
+            : "Account created. In local development, check the backend console for the verification link.",
+        },
+      });
     } catch (err) {
       const errors = err.response?.data;
       const msg = errors ? Object.values(errors).flat().join(" ") : "Registration failed";

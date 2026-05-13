@@ -4,6 +4,7 @@ from .models import User, Department, Complaint, ComplaintHistory, Notification
 
 
 class RegisterSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True)
 
@@ -14,11 +15,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data["password"] != data["password2"]:
             raise serializers.ValidationError({"password": "Passwords do not match."})
+        if User.objects.filter(email__iexact=data["email"]).exists():
+            raise serializers.ValidationError({"email": "Email is already registered."})
         return data
 
     def create(self, validated_data):
         validated_data.pop("password2")
-        user = User.objects.create_user(**validated_data, role="CITIZEN")
+        user = User.objects.create_user(**validated_data, role="CITIZEN", is_verified=False)
         return user
 
 

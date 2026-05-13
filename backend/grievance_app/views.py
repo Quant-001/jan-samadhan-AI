@@ -4,11 +4,16 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
+from django.conf import settings
+from django.core import signing
 from django.utils import timezone
 from django.db.models import Count, Q, Avg
 from django.shortcuts import get_object_or_404
 
 from .ai_service import citizen_help_chat, classify_complaint
+from .email_verification import send_verification_email, verify_email_token
 from .models import User, Department, Complaint, ComplaintHistory, Notification
 from .routing import route_complaint_to_department_head
 from .serializers import (
@@ -22,9 +27,83 @@ from .permissions import IsAdmin, IsOfficer, IsCitizen
 # ─── Auth ───────────────────────────────────────────────────────────────────
 
 
+class VerifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        verification_required = getattr(settings, "EMAIL_VERIFICATION_REQUIRED", True)
+        if verification_required and self.user.role == "CITIZEN" and not self.user.is_verified:
+            raise AuthenticationFailed("Please verify your email before signing in.")
+        return data
+
+
+class VerifiedTokenObtainPairView(TokenObtainPairView):
+    serializer_class = VerifiedTokenObtainPairSerializer
+
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        email_sent = send_verification_email(user)
+        return Response(
+            {
+                **serializer.data,
+                "email_verification_required": getattr(settings, "EMAIL_VERIFICATION_REQUIRED", True),
+                "email_sent": email_sent,
+                "detail": "Account created. Please verify your email before signing in.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            user = verify_email_token(uidb64, token)
+        except (User.DoesNotExist, ValueError, TypeError, signing.BadSignature, signing.SignatureExpired):
+            return Response(
+                {"detail": "Verification link is invalid or expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not user.is_verified:
+            user.is_verified = True
+            user.save(update_fields=["is_verified"])
+        return Response({"detail": "Email verified successfully. You can sign in now."})
+
+
+class ResendVerificationEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        identifier = str(request.data.get("identifier") or request.data.get("email") or "").strip()
+        if not identifier:
+            return Response(
+                {"detail": "Enter your registered email or username."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = User.objects.filter(
+            Q(email__iexact=identifier) | Q(username__iexact=identifier),
+            role="CITIZEN",
+            is_active=True,
+        ).first()
+        if not user:
+            return Response({"detail": "If the account exists, a verification email has been sent."})
+        if user.is_verified:
+            return Response({"detail": "This email is already verified."})
+
+        email_sent = send_verification_email(user)
+        return Response({
+            "detail": "Verification email sent. Please check your inbox.",
+            "email_sent": email_sent,
+        })
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -91,6 +170,8 @@ class CitizenComplaintListCreateView(generics.ListCreateAPIView):
         return Complaint.objects.filter(citizen=self.request.user).prefetch_related("history")
 
     def perform_create(self, serializer):
+        if getattr(settings, "EMAIL_VERIFICATION_REQUIRED", True) and not self.request.user.is_verified:
+            raise PermissionDenied("Please verify your email before submitting a complaint.")
         complaint = serializer.save(citizen=self.request.user)
         _notify(complaint.citizen, complaint, "ASSIGNED",
                 "Complaint Received",

@@ -8,6 +8,7 @@ import HomePage from "./pages/HomePage";
 import PublicInfoPage from "./pages/PublicInfoPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import CitizenDashboard from "./pages/Citizen/CitizenDashboard";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import OfficerDashboard from "./pages/Officer/OfficerDashboard";
@@ -52,6 +53,7 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email/:uidb64/:token" element={<VerifyEmailPage />} />
           <Route path="/track" element={<TrackComplaint />} />
           <Route path="/about" element={<PublicInfoPage page="about" />} />
           <Route path="/sitemap" element={<PublicInfoPage page="sitemap" />} />

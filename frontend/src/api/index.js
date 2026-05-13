@@ -46,6 +46,8 @@ export const authApi = {
   login: (data) => api.post("/auth/login/", data),
   register: (data) => api.post("/auth/register/", data),
   me: () => api.get("/auth/me/"),
+  verifyEmail: (uidb64, token) => api.get(`/auth/verify-email/${uidb64}/${encodeURIComponent(token)}/`),
+  resendVerification: (data) => api.post("/auth/resend-verification/", data),
 };
 
 export const complaintApi = {
