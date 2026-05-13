@@ -27,7 +27,16 @@ export default function LoginPage() {
       else if (user.role === "OFFICER") navigate("/officer/dashboard");
       else navigate("/citizen/dashboard");
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Invalid credentials");
+      const detail = err.response?.data?.detail;
+      if (detail) {
+        toast.error(detail);
+      } else if (!err.response) {
+        toast.error("Login server is not reachable. Please try again after the backend wakes up.");
+      } else if (err.response.status === 401) {
+        toast.error("Invalid credentials");
+      } else {
+        toast.error("Login server configuration error. Please redeploy the backend.");
+      }
     } finally {
       setLoading(false);
     }

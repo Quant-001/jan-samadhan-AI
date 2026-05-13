@@ -17,9 +17,22 @@ def csv_env(name, default=""):
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def append_unique(items, *values):
+    for value in values:
+        if value and value not in items:
+            items.append(value)
+    return items
+
+
 ALLOWED_HOSTS = csv_env(
     "ALLOWED_HOSTS",
     "localhost,127.0.0.1,0.0.0.0,jan-samadhan-ai.onrender.com,jan-samadhan-backend.onrender.com",
+)
+append_unique(
+    ALLOWED_HOSTS,
+    os.getenv("RENDER_EXTERNAL_HOSTNAME"),
+    "jan-samadhan-ai.onrender.com",
+    "jan-samadhan-backend.onrender.com",
 )
 
 INSTALLED_APPS = [
@@ -144,7 +157,13 @@ SIMPLE_JWT = {
 # --- CORS ---
 CORS_ALLOWED_ORIGINS = csv_env(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,http://localhost:3000,https://jan-samadhan.vercel.app",
+    "http://localhost:5173,http://localhost:3000,https://jan-samadhan.vercel.app,https://jan-samadhan-ai-ten.vercel.app",
+)
+append_unique(
+    CORS_ALLOWED_ORIGINS,
+    os.getenv("FRONTEND_URL"),
+    "https://jan-samadhan.vercel.app",
+    "https://jan-samadhan-ai-ten.vercel.app",
 )
 CORS_ALLOWED_ORIGIN_REGEXES = csv_env(
     "CORS_ALLOWED_ORIGIN_REGEXES",
@@ -153,7 +172,13 @@ CORS_ALLOWED_ORIGIN_REGEXES = csv_env(
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = csv_env(
     "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:5173,http://localhost:3000,https://jan-samadhan.vercel.app,https://*.vercel.app",
+    "http://localhost:5173,http://localhost:3000,https://jan-samadhan.vercel.app,https://jan-samadhan-ai-ten.vercel.app,https://*.vercel.app",
+)
+append_unique(
+    CSRF_TRUSTED_ORIGINS,
+    os.getenv("FRONTEND_URL"),
+    "https://jan-samadhan.vercel.app",
+    "https://jan-samadhan-ai-ten.vercel.app",
 )
 
 # --- Static & Media ---
