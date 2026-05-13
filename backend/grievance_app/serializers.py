@@ -31,7 +31,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "username", "email", "phone", "role", "first_name", "last_name",
                   "department", "department_name", "officer_level", "officer_level_display",
-                  "supervisor", "supervisor_name", "jurisdiction", "sector", "pin_code", "employee_id",
+                  "supervisor", "supervisor_name", "jurisdiction", "sector", "block", "pin_code", "employee_id",
                   "is_verified", "date_joined"]
         read_only_fields = ["role", "date_joined", "is_verified"]
 

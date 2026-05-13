@@ -159,6 +159,7 @@ class Command(BaseCommand):
             officer_level="DEPARTMENT_HEAD",
             jurisdiction=f"{profile['label']} department main desk",
             sector="State Desk",
+            block="State Desk",
             pin_code=profile["pin"],
         )
         officer = self._upsert_user(
@@ -173,6 +174,7 @@ class Command(BaseCommand):
             supervisor=head,
             jurisdiction=f"{profile['sector']} {profile['label']} zone",
             sector=profile["sector"],
+            block=profile["sector"],
             pin_code=profile["pin"],
         )
         sub = self._upsert_user(
@@ -187,6 +189,7 @@ class Command(BaseCommand):
             supervisor=officer,
             jurisdiction=f"{profile['ward']} {profile['label']} work",
             sector=profile["ward"],
+            block=profile["ward"],
             pin_code=profile["pin"],
         )
         field = self._upsert_user(
@@ -201,6 +204,7 @@ class Command(BaseCommand):
             supervisor=sub,
             jurisdiction=f"{profile['sector']} field unit",
             sector=profile["sector"],
+            block=profile["sector"],
             pin_code=profile["pin"],
         )
         department.head_officer = head
@@ -221,6 +225,7 @@ class Command(BaseCommand):
         supervisor=None,
         jurisdiction="",
         sector="",
+        block="",
         pin_code="",
     ):
         defaults = {
@@ -235,6 +240,7 @@ class Command(BaseCommand):
             "supervisor": supervisor,
             "jurisdiction": jurisdiction,
             "sector": sector,
+            "block": block or sector,
             "pin_code": pin_code,
             "is_verified": True,
             "is_active": True,

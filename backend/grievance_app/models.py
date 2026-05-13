@@ -31,6 +31,7 @@ class User(AbstractUser):
     )
     jurisdiction = models.CharField(max_length=120, blank=True)
     sector = models.CharField(max_length=80, blank=True)
+    block = models.CharField(max_length=80, blank=True, default="")
     pin_code = models.CharField(max_length=10, blank=True)
     employee_id = models.CharField(max_length=30, blank=True, unique=True, null=True)
     is_verified = models.BooleanField(default=False)

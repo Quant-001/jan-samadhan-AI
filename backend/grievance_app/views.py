@@ -657,7 +657,7 @@ def _update_officer_account(
         for key in [
             "username", "email", "password", "phone", "first_name", "last_name",
             "employee_id", "department_id", "department", "officer_level",
-            "jurisdiction", "sector", "pin_code",
+            "jurisdiction", "sector", "block", "pin_code",
         ]
         if key in data
     }
@@ -688,7 +688,7 @@ def _update_officer_account(
     if errors:
         return Response({"errors": errors, "error": "Please correct the officer form."}, status=status.HTTP_400_BAD_REQUEST)
 
-    for field in ["username", "email", "phone", "first_name", "last_name", "jurisdiction", "sector", "pin_code"]:
+    for field in ["username", "email", "phone", "first_name", "last_name", "jurisdiction", "sector", "block", "pin_code"]:
         if field in payload:
             setattr(officer, field, payload[field])
     if "employee_id" in payload:
