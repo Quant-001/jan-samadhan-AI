@@ -21,14 +21,14 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const { data } = await authApi.register(form);
-      toast.success(data?.detail || "Account created. Check your email to verify it.");
-      navigate("/login", {
+      toast.success(data?.detail || "Account created. Check your email for the OTP.");
+      navigate("/verify-email", {
         state: {
           from,
           verificationEmail: form.email,
           verificationMessage: data?.email_sent
-            ? "Verification email sent. Please check your inbox."
-            : "Account created. In local development, check the backend console for the verification link.",
+            ? "OTP sent. Please check your inbox and enter the 6 digit code."
+            : "Account created. In local development, check the backend console for the OTP.",
         },
       });
     } catch (err) {

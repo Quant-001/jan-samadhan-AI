@@ -387,8 +387,8 @@ export default function CitizenDashboard() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Complaint File / Picture / Audio")}</label>
-              <input type="file" accept="image/*,application/pdf,audio/*" className="input text-sm"
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Complaint File / Picture / Audio / Video")}</label>
+              <input type="file" accept="image/*,video/*,audio/*,application/pdf" className="input text-sm"
                 onChange={(e) => setForm({ ...form, attachment: e.target.files[0] })} />
             </div>
             <div className="flex gap-3">

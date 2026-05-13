@@ -35,6 +35,8 @@ class User(AbstractUser):
     pin_code = models.CharField(max_length=10, blank=True)
     employee_id = models.CharField(max_length=30, blank=True, unique=True, null=True)
     is_verified = models.BooleanField(default=False)
+    email_verification_otp = models.CharField(max_length=6, blank=True)
+    email_verification_otp_created_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "User"

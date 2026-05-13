@@ -56,9 +56,9 @@ export default function LoginPage() {
     setResending(true);
     try {
       const { data } = await authApi.resendVerification({ identifier });
-      toast.success(data?.detail || "Verification email sent.");
+      toast.success(data?.detail || "Verification OTP sent.");
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Could not send verification email.");
+      toast.error(err.response?.data?.detail || "Could not send verification OTP.");
     } finally {
       setResending(false);
     }
@@ -128,7 +128,7 @@ export default function LoginPage() {
             className="btn-secondary flex w-full items-center justify-center gap-2 py-2.5 text-sm"
           >
             <RefreshCw size={16} className={resending ? "animate-spin" : ""} />
-            {resending ? "Sending verification..." : "Resend verification email"}
+            {resending ? "Sending OTP..." : "Resend verification OTP"}
           </button>
         </form>
           <div className="mt-5 rounded border border-cyan-100 bg-cyan-50 p-3">

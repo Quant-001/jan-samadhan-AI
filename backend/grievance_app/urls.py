@@ -8,6 +8,7 @@ urlpatterns = [
     path("auth/login/", views.VerifiedTokenObtainPairView.as_view()),
     path("auth/refresh/", TokenRefreshView.as_view()),
     path("auth/me/", views.MeView.as_view()),
+    path("auth/verify-email/", views.VerifyEmailView.as_view()),
     path("auth/verify-email/<str:uidb64>/<str:token>/", views.VerifyEmailView.as_view()),
     path("auth/resend-verification/", views.ResendVerificationEmailView.as_view()),
 

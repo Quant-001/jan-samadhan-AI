@@ -53,6 +53,7 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/verify-email/:uidb64/:token" element={<VerifyEmailPage />} />
           <Route path="/track" element={<TrackComplaint />} />
           <Route path="/about" element={<PublicInfoPage page="about" />} />

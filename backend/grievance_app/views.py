@@ -15,7 +15,9 @@ from django.shortcuts import get_object_or_404
 from .ai_service import citizen_help_chat, classify_complaint
 from .email_verification import (
     send_complaint_receipt_email,
+    send_complaint_status_email,
     send_verification_email,
+    verify_email_otp,
     verify_email_token,
 )
 from .models import User, Department, Complaint, ComplaintHistory, Notification
@@ -58,7 +60,7 @@ class RegisterView(generics.CreateAPIView):
                 **serializer.data,
                 "email_verification_required": getattr(settings, "EMAIL_VERIFICATION_REQUIRED", True),
                 "email_sent": email_sent,
-                "detail": "Account created. Please verify your email before signing in.",
+                "detail": "Account created. Please enter the OTP sent to your email before signing in.",
             },
             status=status.HTTP_201_CREATED,
         )
@@ -66,6 +68,34 @@ class RegisterView(generics.CreateAPIView):
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
+
+    def post(self, request, uidb64=None, token=None):
+        identifier = request.data.get("identifier") or request.data.get("email")
+        otp = request.data.get("otp")
+        try:
+            user = verify_email_otp(identifier, otp)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "No citizen account found for this email or username."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except signing.SignatureExpired:
+            return Response(
+                {"detail": "OTP expired. Please request a new OTP."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except (ValueError, TypeError, signing.BadSignature):
+            return Response(
+                {"detail": "Invalid OTP. Please check your email and try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not user.is_verified:
+            user.is_verified = True
+        user.email_verification_otp = ""
+        user.email_verification_otp_created_at = None
+        user.save(update_fields=["is_verified", "email_verification_otp", "email_verification_otp_created_at"])
+        return Response({"detail": "Email verified successfully. You can sign in now."})
 
     def get(self, request, uidb64, token):
         try:
@@ -78,7 +108,9 @@ class VerifyEmailView(APIView):
 
         if not user.is_verified:
             user.is_verified = True
-            user.save(update_fields=["is_verified"])
+        user.email_verification_otp = ""
+        user.email_verification_otp_created_at = None
+        user.save(update_fields=["is_verified", "email_verification_otp", "email_verification_otp_created_at"])
         return Response({"detail": "Email verified successfully. You can sign in now."})
 
 
@@ -105,7 +137,7 @@ class ResendVerificationEmailView(APIView):
 
         email_sent = send_verification_email(user)
         return Response({
-            "detail": "Verification email sent. Please check your inbox.",
+            "detail": "Verification OTP sent. Please check your inbox.",
             "email_sent": email_sent,
         })
 
@@ -268,6 +300,7 @@ class AdminComplaintUpdateView(generics.UpdateAPIView):
             _notify(complaint.citizen, complaint, "STATUS_UPDATE",
                     f"Complaint #{complaint.ticket_id} Updated",
                     f"Status changed to {complaint.get_status_display()}")
+            send_complaint_status_email(complaint)
         if complaint.assigned_officer:
             _notify(complaint.assigned_officer, complaint, "ASSIGNED",
                     f"New Complaint Assigned: #{complaint.ticket_id}",
@@ -568,6 +601,8 @@ class OfficerComplaintUpdateView(generics.UpdateAPIView):
         _notify(complaint.citizen, complaint, "STATUS_UPDATE",
                 f"Update on #{complaint.ticket_id}",
                 f"Officer updated status to: {complaint.get_status_display()}")
+        if old_status != complaint.status:
+            send_complaint_status_email(complaint)
         _notify_admins(
             complaint,
             "STATUS_UPDATE",
