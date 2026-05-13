@@ -5,6 +5,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
+  timeout: 5000,
 });
 
 api.interceptors.request.use((config) => {
@@ -22,12 +23,13 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem("refresh_token");
       if (refresh) {
         try {
-          const { data } = await axios.post(`${API_BASE}/auth/refresh/`, { refresh });
+          const { data } = await axios.post(`${API_BASE}/auth/refresh/`, { refresh }, { timeout: 5000 });
           localStorage.setItem("access_token", data.access);
           original.headers.Authorization = `Bearer ${data.access}`;
           return api(original);
         } catch {
-          localStorage.clear();
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
           window.location.href = "/login";
         }
       }
@@ -62,10 +64,23 @@ export const adminApi = {
   stats: () => api.get("/admin/stats/"),
   users: (params) => api.get("/admin/users/", { params }),
   createOfficer: (data) => api.post("/admin/create-officer/", data),
+  updateOfficer: (id, data) => api.patch(`/admin/officers/${id}/`, data),
+  deleteOfficer: (id) => api.delete(`/admin/officers/${id}/`),
+  departments: () => api.get("/admin/departments/"),
+  createDepartment: (data) => api.post("/admin/departments/", data),
+  updateDepartment: (id, data) => api.patch(`/admin/departments/${id}/`, data),
+  deleteDepartment: (id) => api.delete(`/admin/departments/${id}/`),
 };
 
 export const officerApi = {
   complaints: () => api.get("/officer/complaints/"),
+  createComplaint: (data) => api.post("/officer/add-complaint/", data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }),
+  assignableOfficers: () => api.get("/officer/assignable-officers/"),
+  createSubordinate: (data) => api.post("/officer/subordinates/", data),
+  updateSubordinate: (id, data) => api.patch(`/officer/subordinates/${id}/`, data),
+  deleteSubordinate: (id) => api.delete(`/officer/subordinates/${id}/`),
   update: (id, data) => api.patch(`/officer/complaints/${id}/`, data, {
     headers: { "Content-Type": "multipart/form-data" },
   }),
@@ -78,4 +93,16 @@ export const notificationApi = {
 
 export const departmentApi = {
   list: () => api.get("/departments/"),
+};
+
+export const chatbotApi = {
+  ask: (message) => api.post("/chatbot/help/", { message }),
+};
+
+export const aiApi = {
+  classify: (data) => api.post("/ai/classify/", data),
+};
+
+export const publicApi = {
+  stats: () => api.get("/public/stats/"),
 };

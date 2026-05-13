@@ -3,6 +3,11 @@ import { authApi } from "../api";
 
 const AuthContext = createContext(null);
 
+function clearAuthTokens() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -12,7 +17,10 @@ export function AuthProvider({ children }) {
     if (token) {
       authApi.me()
         .then((res) => setUser(res.data))
-        .catch(() => { localStorage.clear(); })
+        .catch(() => {
+          clearAuthTokens();
+          setUser(null);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -29,7 +37,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.clear();
+    clearAuthTokens();
     setUser(null);
     window.location.href = "/login";
   };

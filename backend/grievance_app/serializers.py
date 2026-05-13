@@ -24,21 +24,28 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source="department.name", read_only=True)
+    officer_level_display = serializers.CharField(source="get_officer_level_display", read_only=True)
+    supervisor_name = serializers.CharField(source="supervisor.get_full_name", read_only=True)
 
     class Meta:
         model = User
         fields = ["id", "username", "email", "phone", "role", "first_name", "last_name",
-                  "department", "department_name", "employee_id", "is_verified", "date_joined"]
+                  "department", "department_name", "officer_level", "officer_level_display",
+                  "supervisor", "supervisor_name", "jurisdiction", "sector", "pin_code", "employee_id",
+                  "is_verified", "date_joined"]
         read_only_fields = ["role", "date_joined", "is_verified"]
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
     complaint_count = serializers.SerializerMethodField()
+    head_officer_name = serializers.CharField(source="head_officer.get_full_name", read_only=True)
+    government_level_display = serializers.CharField(source="get_government_level_display", read_only=True)
 
     class Meta:
         model = Department
-        fields = ["id", "name", "code", "description", "email", "is_active",
-                  "head_officer", "complaint_count", "created_at"]
+        fields = ["id", "name", "code", "government_level", "government_level_display",
+                  "description", "parent_department", "email", "is_active",
+                  "head_officer", "head_officer_name", "complaint_count", "created_at"]
 
     def get_complaint_count(self, obj):
         return obj.complaints.filter(status__in=["PENDING", "ASSIGNED", "IN_PROGRESS"]).count()
@@ -65,7 +72,9 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "id", "ticket_id", "title", "description", "original_language",
             "translated_description", "category", "ai_category", "ai_confidence",
             "priority", "status", "department", "department_name", "assigned_officer",
-            "officer_name", "citizen_name", "location", "latitude", "longitude",
+            "officer_name", "citizen_name", "complainant_name", "valid_id_number",
+            "location", "latitude", "longitude",
+            "sector", "pin_code", "routing_note",
             "attachment", "proof_of_resolution", "officer_remarks", "admin_override_note",
             "sla_deadline", "sla_remaining_hours", "is_sla_breached",
             "citizen_rating", "citizen_feedback", "is_duplicate",
@@ -74,7 +83,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "ticket_id", "ai_category", "ai_confidence", "original_language",
             "translated_description", "is_sla_breached", "sla_deadline",
-            "created_at", "updated_at",
+            "created_at", "updated_at", "routing_note",
         ]
 
     def get_sla_remaining_hours(self, obj):
@@ -88,7 +97,17 @@ class ComplaintSerializer(serializers.ModelSerializer):
 class ComplaintCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Complaint
-        fields = ["title", "description", "location", "latitude", "longitude", "attachment"]
+        fields = [
+            "complainant_name", "valid_id_number", "title", "description", "location", "sector", "pin_code",
+            "latitude", "longitude", "attachment",
+        ]
+
+    def validate_pin_code(self, value):
+        if not value:
+            raise serializers.ValidationError("PIN code is required.")
+        if not value.isdigit() or len(value) != 6:
+            raise serializers.ValidationError("Enter a valid 6 digit PIN code.")
+        return value
 
     def create(self, validated_data):
         from .ai_service import classify_complaint
@@ -104,6 +123,12 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
         validated_data["ai_confidence"] = ai_result.get("confidence", 0.0)
         validated_data["original_language"] = ai_result.get("original_lang", "en")
         validated_data["translated_description"] = ai_result.get("translated_text", text)
+        if not validated_data.get("pin_code"):
+            from .routing import extract_pin
+            validated_data["pin_code"] = extract_pin(
+                validated_data.get("location"),
+                validated_data.get("description"),
+            )
 
         # Auto-assign department
         from .models import Department
@@ -116,7 +141,10 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
         hours = settings.SLA_HOURS.get(validated_data["priority"], 168)
         validated_data["sla_deadline"] = timezone.now() + timezone.timedelta(hours=hours)
 
-        return super().create(validated_data)
+        complaint = super().create(validated_data)
+        from .routing import route_complaint_to_department_head
+        route_complaint_to_department_head(complaint)
+        return complaint
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -136,7 +164,7 @@ class AdminComplaintUpdateSerializer(serializers.ModelSerializer):
 class OfficerComplaintUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Complaint
-        fields = ["status", "officer_remarks", "proof_of_resolution"]
+        fields = ["status", "assigned_officer", "officer_remarks", "proof_of_resolution"]
 
 
 class CitizenFeedbackSerializer(serializers.ModelSerializer):

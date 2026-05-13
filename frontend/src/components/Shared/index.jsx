@@ -1,17 +1,21 @@
 import { PRIORITY_COLORS, STATUS_COLORS, CATEGORY_ICONS } from "../../utils/helpers";
+import { useLanguage } from "../../hooks/useLanguage";
 
 export function PriorityBadge({ priority }) {
+  const { t } = useLanguage();
   return (
     <span className={`badge ${PRIORITY_COLORS[priority] || "bg-gray-100 text-gray-700"}`}>
-      {priority}
+      {t(priority)}
     </span>
   );
 }
 
 export function StatusBadge({ status }) {
+  const { t } = useLanguage();
+  const label = status?.replace("_", " ");
   return (
     <span className={`badge ${STATUS_COLORS[status] || "bg-gray-100 text-gray-700"}`}>
-      {status?.replace("_", " ")}
+      {t(label)}
     </span>
   );
 }
@@ -40,20 +44,20 @@ export function EmptyState({ icon, title, description, action }) {
 
 export function StatCard({ label, value, icon, color = "blue", sub }) {
   const colors = {
-    blue: "bg-blue-50 text-blue-700",
-    green: "bg-green-50 text-green-700",
-    yellow: "bg-yellow-50 text-yellow-700",
-    red: "bg-red-50 text-red-700",
-    purple: "bg-purple-50 text-purple-700",
+    blue: "bg-cyan-50 text-cyan-700",
+    green: "bg-emerald-50 text-emerald-700",
+    yellow: "bg-amber-50 text-amber-700",
+    red: "bg-rose-50 text-rose-700",
+    purple: "bg-violet-50 text-violet-700",
   };
   return (
-    <div className="card p-5">
+    <div className="card p-5 transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm text-gray-500">{label}</p>
-        <span className={`p-1.5 rounded-lg text-lg ${colors[color]}`}>{icon}</span>
+        <p className="text-sm font-semibold text-slate-500">{label}</p>
+        <span className={`rounded p-2 text-lg ${colors[color]}`}>{icon}</span>
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      <p className="text-3xl font-black tracking-tight text-slate-950">{value}</p>
+      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
     </div>
   );
 }

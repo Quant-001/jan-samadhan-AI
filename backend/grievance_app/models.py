@@ -12,10 +12,26 @@ class User(AbstractUser):
         ("OFFICER", "Officer"),
     ]
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="CITIZEN")
+    OFFICER_LEVEL_CHOICES = [
+        ("MAIN_OFFICER", "Main Officer"),
+        ("DEPARTMENT_HEAD", "Department-Wise Main Officer"),
+        ("DEPARTMENT_OFFICER", "Department Officer"),
+        ("SUB_OFFICER", "Sub Officer"),
+        ("FIELD_OFFICER", "Sub-Section / Field Officer"),
+    ]
     phone = models.CharField(max_length=15, blank=True)
     department = models.ForeignKey(
         "Department", null=True, blank=True, on_delete=models.SET_NULL, related_name="officers"
     )
+    officer_level = models.CharField(
+        max_length=30, choices=OFFICER_LEVEL_CHOICES, blank=True, default=""
+    )
+    supervisor = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="sub_officers"
+    )
+    jurisdiction = models.CharField(max_length=120, blank=True)
+    sector = models.CharField(max_length=80, blank=True)
+    pin_code = models.CharField(max_length=10, blank=True)
     employee_id = models.CharField(max_length=30, blank=True, unique=True, null=True)
     is_verified = models.BooleanField(default=False)
 
@@ -27,9 +43,20 @@ class User(AbstractUser):
 
 
 class Department(models.Model):
+    GOVERNMENT_LEVEL_CHOICES = [
+        ("STATE", "State Government"),
+        ("CENTRAL", "Central Government"),
+        ("LOCAL", "Local Body"),
+    ]
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=20, unique=True)
+    government_level = models.CharField(
+        max_length=20, choices=GOVERNMENT_LEVEL_CHOICES, default="STATE"
+    )
     description = models.TextField(blank=True)
+    parent_department = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="sub_departments"
+    )
     head_officer = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name="headed_departments"
     )
@@ -70,6 +97,8 @@ class Complaint(models.Model):
 
     ticket_id = models.CharField(max_length=20, unique=True, editable=False)
     citizen = models.ForeignKey(User, on_delete=models.CASCADE, related_name="complaints")
+    complainant_name = models.CharField(max_length=120, blank=True)
+    valid_id_number = models.CharField(max_length=80, blank=True)
     title = models.CharField(max_length=255)
     description = models.TextField()
     original_language = models.CharField(max_length=20, default="en")
@@ -86,12 +115,15 @@ class Complaint(models.Model):
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_complaints"
     )
     location = models.CharField(max_length=255, blank=True)
+    sector = models.CharField(max_length=80, blank=True)
+    pin_code = models.CharField(max_length=10, blank=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     attachment = models.FileField(upload_to="complaints/attachments/", blank=True, null=True)
     proof_of_resolution = models.FileField(upload_to="complaints/proofs/", blank=True, null=True)
     officer_remarks = models.TextField(blank=True)
     admin_override_note = models.TextField(blank=True)
+    routing_note = models.TextField(blank=True)
     sla_deadline = models.DateTimeField(null=True, blank=True)
     is_sla_breached = models.BooleanField(default=False)
     citizen_rating = models.IntegerField(null=True, blank=True)

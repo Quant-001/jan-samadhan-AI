@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+import dj_database_url
 
 load_dotenv()
 
@@ -63,21 +64,35 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# --- Database (Neon PostgreSQL) ---
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "neondb"),
-        "USER": os.getenv("DB_USER", "neondb_owner"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "ep-lively-term-akuh8v9l-pooler.c-3.us-west-2.aws.neon.tech"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-        "OPTIONS": {
-            "sslmode": "require",
-            "channel_binding": "require",  # Neon requires this
-        },
+DB_SSLMODE = os.getenv("DB_SSLMODE", "disable" if DEBUG else "require")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=DB_SSLMODE != "disable",
+        )
     }
-}
+else:
+    DB_OPTIONS = {}
+    if DB_SSLMODE and DB_SSLMODE != "disable":
+        DB_OPTIONS["sslmode"] = DB_SSLMODE
+    if os.getenv("DB_CHANNEL_BINDING"):
+        DB_OPTIONS["channel_binding"] = os.getenv("DB_CHANNEL_BINDING")
+
+    # --- Database (local PostgreSQL by default, Neon/managed Postgres via env) ---
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "jan_samadhan"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            "OPTIONS": DB_OPTIONS,
+        }
+    }
 # --- Redis & Celery ---
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
@@ -125,6 +140,10 @@ CORS_ALLOWED_ORIGINS = os.getenv(
     "http://localhost:5173,http://localhost:3000"
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:5173,http://localhost:3000"
+).split(",")
 
 # --- Static & Media ---
 STATIC_URL = "/static/"
@@ -133,10 +152,6 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
-
-# --- Groq AI (Free LLM API) ---
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
 
 # --- Email (SMTP) ---
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -148,6 +163,7 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@jansamadhan.in")
 
 # --- Axes (Brute-force protection) ---
+AXES_ENABLED = os.getenv("AXES_ENABLED", "False" if DEBUG else "True") == "True"
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = timedelta(minutes=15)
 AXES_LOCKOUT_CALLABLE = None

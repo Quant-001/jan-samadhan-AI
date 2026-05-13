@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && echo \"from grievance_app.models import User; User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'indreshmishra566@gmail.com', 'Admin@123', role='ADMIN')\" | python manage.py shell && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed && python manage.py train_local_ai_model && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120"]

@@ -28,6 +28,7 @@ node_modules/
 *.log
 
 # IDE
+.history/
 .vscode/
 .idea/
 *.swp

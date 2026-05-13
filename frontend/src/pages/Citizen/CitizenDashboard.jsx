@@ -1,18 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { complaintApi, departmentApi } from "../../api";
 import { PriorityBadge, StatusBadge, CategoryIcon, StatCard, LoadingSpinner, EmptyState } from "../../components/Shared";
 import { formatDate } from "../../utils/helpers";
 import { useAuth } from "../../hooks/useAuth";
+import { useLanguage } from "../../hooks/useLanguage";
 import toast from "react-hot-toast";
 import { Plus, X, FileText, MapPin } from "lucide-react";
 
 export default function CitizenDashboard() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState({ title: "", description: "", location: "", attachment: null });
+  const emptyForm = {
+    complainant_name: user?.first_name || "",
+    valid_id_number: "",
+    title: "",
+    description: "",
+    location: "",
+    sector: "",
+    pin_code: "",
+    attachment: null,
+  };
+  const [form, setForm] = useState(emptyForm);
 
   const { data, isLoading } = useQuery({
     queryKey: ["my-complaints"],
@@ -21,43 +35,55 @@ export default function CitizenDashboard() {
 
   const complaints = data?.results || data || [];
 
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setShowForm(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const createMutation = useMutation({
     mutationFn: (fd) => complaintApi.create(fd),
     onSuccess: () => {
       qc.invalidateQueries(["my-complaints"]);
-      toast.success("Complaint submitted! AI is classifying it now.");
+      toast.success(t("Complaint submitted! AI is classifying it now."));
       setShowForm(false);
-      setForm({ title: "", description: "", location: "", attachment: null });
+      setForm(emptyForm);
     },
-    onError: (err) => toast.error(err.response?.data?.detail || "Submission failed"),
+    onError: (err) => toast.error(err.response?.data?.detail || t("Submission failed")),
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const fd = new FormData();
+    fd.append("complainant_name", form.complainant_name);
+    fd.append("valid_id_number", form.valid_id_number);
     fd.append("title", form.title);
     fd.append("description", form.description);
     fd.append("location", form.location);
+    fd.append("sector", form.sector);
+    fd.append("pin_code", form.pin_code);
     if (form.attachment) fd.append("attachment", form.attachment);
     createMutation.mutate(fd);
   };
 
   const stats = [
-    { label: "Total Complaints", value: complaints.length, icon: "📋", color: "blue" },
-    { label: "Pending", value: complaints.filter((c) => c.status === "PENDING").length, icon: "⏳", color: "yellow" },
-    { label: "Resolved", value: complaints.filter((c) => c.status === "RESOLVED").length, icon: "✅", color: "green" },
-    { label: "Escalated", value: complaints.filter((c) => c.status === "ESCALATED").length, icon: "🔴", color: "red" },
+    { label: t("Total Complaints"), value: complaints.length, icon: "📋", color: "blue" },
+    { label: t("Pending"), value: complaints.filter((c) => c.status === "PENDING").length, icon: "⏳", color: "yellow" },
+    { label: t("Resolved"), value: complaints.filter((c) => c.status === "RESOLVED").length, icon: "✅", color: "green" },
+    { label: t("Escalated"), value: complaints.filter((c) => c.status === "ESCALATED").length, icon: "🔴", color: "red" },
   ];
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mx-auto max-w-6xl p-4 md:p-6">
+      <div className="mb-6 flex flex-col justify-between gap-4 rounded border border-slate-800 bg-slate-950 p-5 text-white shadow-sm md:flex-row md:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Complaints</h1>
-          <p className="text-gray-500 text-sm">Welcome, {user?.first_name || user?.username}</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-cyan-300">{t("Citizen Dashboard")}</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight">{t("My Complaints")}</h1>
+          <p className="mt-1 text-sm text-slate-300">{t("Welcome,")} {user?.first_name || user?.username}. {t("Submit, track, and rate grievances from one place.")}</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={16} /> New Complaint
+        <button onClick={() => setShowForm(true)} className="inline-flex items-center justify-center gap-2 rounded bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 hover:bg-cyan-300">
+          <Plus size={16} /> {t("New Complaint")}
         </button>
       </div>
 
@@ -66,60 +92,93 @@ export default function CitizenDashboard() {
       </div>
 
       {showForm && (
-        <div className="card p-6 mb-6">
+        <div className="card mb-6 overflow-hidden">
+          <div className="bg-slate-950 px-6 py-4 text-white">
+            <h2 className="text-lg font-black">{t("Submit New Complaint")}</h2>
+            <p className="text-sm text-slate-300">{t("AI will classify and route it after submission.")}</p>
+          </div>
+          <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Submit New Complaint</h2>
             <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded"><X size={18} /></button>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("Citizen Name")}</label>
+                <input className="input" value={form.complainant_name}
+                  onChange={(e) => setForm({ ...form, complainant_name: e.target.value })}
+                  placeholder={t("Full name of complainant")} required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("Valid ID Number")}</label>
+                <input className="input" value={form.valid_id_number}
+                  onChange={(e) => setForm({ ...form, valid_id_number: e.target.value })}
+                  placeholder={t("Aadhaar / Voter ID / PAN / local ID")} required />
+              </div>
+            </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Title")}</label>
               <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Brief title of your complaint" required />
+                placeholder={t("Brief title of your complaint")} required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description <span className="text-gray-400 font-normal">(Hindi or English both accepted)</span>
+                {t("Description")} <span className="text-gray-400 font-normal">({t("Hindi or English both accepted")})</span>
               </label>
               <textarea className="input min-h-24 resize-y" value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Describe your complaint in detail. AI will auto-classify it." required />
+                placeholder={t("Describe your complaint in detail. AI will auto-classify it.")} required />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location / Address</label>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="md:col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Location / Address")}</label>
               <div className="relative">
                 <MapPin size={16} className="absolute left-3 top-2.5 text-gray-400" />
                 <input className="input pl-9" value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
-                  placeholder="Ward no., area, city" />
+                  placeholder={t("Ward no., area, city")} />
+              </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("Sector / Ward")}</label>
+                <input className="input" value={form.sector}
+                  onChange={(e) => setForm({ ...form, sector: e.target.value })}
+                  placeholder={t("Sector 4 or Ward 12")} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("PIN Code")}</label>
+                <input className="input" inputMode="numeric" maxLength={6} value={form.pin_code}
+                  onChange={(e) => setForm({ ...form, pin_code: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                  placeholder="452001" required />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Attachment (optional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Complaint File / Picture")}</label>
               <input type="file" accept="image/*,application/pdf" className="input text-sm"
                 onChange={(e) => setForm({ ...form, attachment: e.target.files[0] })} />
             </div>
             <div className="flex gap-3">
               <button type="submit" disabled={createMutation.isPending} className="btn-primary">
-                {createMutation.isPending ? "Submitting..." : "Submit Complaint"}
+                {createMutation.isPending ? t("Submitting...") : t("Submit Complaint")}
               </button>
-              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
+              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">{t("Cancel")}</button>
             </div>
           </form>
+          </div>
         </div>
       )}
 
       {isLoading ? (
         <div className="flex justify-center py-12"><LoadingSpinner size="lg" /></div>
       ) : complaints.length === 0 ? (
-        <EmptyState icon="📭" title="No complaints yet"
-          description="Submit your first complaint and we'll route it to the right department."
-          action={<button onClick={() => setShowForm(true)} className="btn-primary">Submit Complaint</button>} />
+        <EmptyState icon="📭" title={t("No complaints yet")}
+          description={t("Submit your first complaint and we'll route it to the right department.")}
+          action={<button onClick={() => setShowForm(true)} className="btn-primary">{t("Submit Complaint")}</button>} />
       ) : (
         <div className="space-y-3">
           {complaints.map((c) => (
             <div key={c.id} onClick={() => setSelected(selected?.id === c.id ? null : c)}
-              className="card p-4 cursor-pointer hover:shadow-md transition-shadow">
+              className="card cursor-pointer p-4 transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <span className="text-2xl"><CategoryIcon category={c.category} /></span>
@@ -132,7 +191,7 @@ export default function CitizenDashboard() {
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <StatusBadge status={c.status} />
                       <PriorityBadge priority={c.priority} />
-                      {c.department_name && <span className="text-xs text-gray-500">🏛️ {c.department_name}</span>}
+                      {c.department_name && <span className="text-xs text-gray-500">🏛️ {t(c.department_name)}</span>}
                     </div>
                   </div>
                 </div>
@@ -141,17 +200,25 @@ export default function CitizenDashboard() {
               {selected?.id === c.id && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                    <div><span className="text-gray-400">AI Category:</span> <span className="font-medium">{c.ai_category} ({Math.round(c.ai_confidence * 100)}%)</span></div>
-                    <div><span className="text-gray-400">SLA Deadline:</span> <span className="font-medium">{formatDate(c.sla_deadline)}</span></div>
-                    {c.officer_name && <div><span className="text-gray-400">Officer:</span> <span className="font-medium">{c.officer_name}</span></div>}
+                    <div><span className="text-gray-400">{t("AI Category")}:</span> <span className="font-medium">{t(c.ai_category)} ({Math.round(c.ai_confidence * 100)}%)</span></div>
+                    {c.complainant_name && <div><span className="text-gray-400">{t("Citizen")}:</span> <span className="font-medium">{c.complainant_name}</span></div>}
+                    {c.valid_id_number && <div><span className="text-gray-400">{t("Valid ID")}:</span> <span className="font-medium">{c.valid_id_number}</span></div>}
+                    <div><span className="text-gray-400">{t("SLA Deadline")}:</span> <span className="font-medium">{formatDate(c.sla_deadline)}</span></div>
+                    {c.officer_name && <div><span className="text-gray-400">{t("Officer")}:</span> <span className="font-medium">{c.officer_name}</span></div>}
+                    {(c.sector || c.pin_code) && <div><span className="text-gray-400">{t("Area")}:</span> <span className="font-medium">{[c.sector, c.pin_code].filter(Boolean).join(" / ")}</span></div>}
                   </div>
+                  {c.routing_note && (
+                    <div className="mt-3 rounded border border-teal-100 bg-teal-50 p-3 text-sm text-teal-900">
+                      {c.routing_note}
+                    </div>
+                  )}
                   {c.officer_remarks && (
                     <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm">
-                      <span className="font-medium text-blue-700">Officer remarks:</span> {c.officer_remarks}
+                      <span className="font-medium text-blue-700">{t("Officer remarks")}:</span> {c.officer_remarks}
                     </div>
                   )}
                   {c.status === "RESOLVED" && !c.citizen_rating && (
-                    <FeedbackForm complaintId={c.id} onDone={() => qc.invalidateQueries(["my-complaints"])} />
+                    <FeedbackForm complaintId={c.id} onDone={() => qc.invalidateQueries(["my-complaints"])} t={t} />
                   )}
                 </div>
               )}
@@ -163,16 +230,16 @@ export default function CitizenDashboard() {
   );
 }
 
-function FeedbackForm({ complaintId, onDone }) {
+function FeedbackForm({ complaintId, onDone, t }) {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
   const mutation = useMutation({
     mutationFn: () => complaintApi.feedback(complaintId, { citizen_rating: rating, citizen_feedback: feedback }),
-    onSuccess: () => { toast.success("Thank you for your feedback!"); onDone(); },
+    onSuccess: () => { toast.success(t("Thank you for your feedback!")); onDone(); },
   });
   return (
     <div className="mt-3 p-4 bg-green-50 rounded-lg">
-      <p className="text-sm font-medium text-green-800 mb-2">Rate your experience:</p>
+      <p className="text-sm font-medium text-green-800 mb-2">{t("Rate your experience:")}</p>
       <div className="flex gap-2 mb-2">
         {[1, 2, 3, 4, 5].map((n) => (
           <button key={n} onClick={() => setRating(n)}
@@ -180,9 +247,9 @@ function FeedbackForm({ complaintId, onDone }) {
         ))}
       </div>
       <textarea className="input text-sm mb-2" value={feedback} onChange={(e) => setFeedback(e.target.value)}
-        placeholder="Any comments?" rows={2} />
+        placeholder={t("Any comments?")} rows={2} />
       <button onClick={() => mutation.mutate()} disabled={!rating || mutation.isPending} className="btn-primary text-sm py-1.5">
-        Submit Feedback
+        {t("Submit Feedback")}
       </button>
     </div>
   );
