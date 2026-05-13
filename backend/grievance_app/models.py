@@ -99,7 +99,6 @@ class Complaint(models.Model):
     ticket_id = models.CharField(max_length=20, unique=True, editable=False)
     citizen = models.ForeignKey(User, on_delete=models.CASCADE, related_name="complaints")
     complainant_name = models.CharField(max_length=120, blank=True)
-    complainant_email = models.EmailField(blank=True)
     valid_id_number = models.CharField(max_length=80, blank=True)
     title = models.CharField(max_length=255)
     description = models.TextField()

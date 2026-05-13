@@ -13,7 +13,11 @@ from django.db.models import Count, Q, Avg
 from django.shortcuts import get_object_or_404
 
 from .ai_service import citizen_help_chat, classify_complaint
-from .email_verification import send_verification_email, verify_email_token
+from .email_verification import (
+    send_complaint_receipt_email,
+    send_verification_email,
+    verify_email_token,
+)
 from .models import User, Department, Complaint, ComplaintHistory, Notification
 from .routing import route_complaint_to_department_head
 from .serializers import (
@@ -176,6 +180,8 @@ class CitizenComplaintListCreateView(generics.ListCreateAPIView):
         _notify(complaint.citizen, complaint, "ASSIGNED",
                 "Complaint Received",
                 f"Your complaint #{complaint.ticket_id} has been submitted successfully.")
+        receipt_email = str(self.request.data.get("complainant_email") or self.request.user.email or "").strip()
+        send_complaint_receipt_email(complaint, receipt_email)
         if complaint.status == "ASSIGNED":
             ComplaintHistory.objects.create(
                 complaint=complaint,

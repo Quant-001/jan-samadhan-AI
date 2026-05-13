@@ -39,13 +39,43 @@ def send_verification_email(user):
         f"Verify email: {verification_link}\n\n"
         "This link will expire automatically."
     )
-    sent = send_mail(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        fail_silently=getattr(settings, "DEBUG", False),
+    return send_portal_email(subject, message, [user.email])
+
+
+def send_complaint_receipt_email(complaint, recipient_email=None):
+    email = recipient_email or complaint.citizen.email
+    if not email:
+        return False
+
+    subject = f"Complaint submitted: #{complaint.ticket_id}"
+    message = (
+        f"Hello {complaint.complainant_name or complaint.citizen.first_name or complaint.citizen.username},\n\n"
+        "Your complaint has been submitted successfully on Jan Samadhan AI.\n\n"
+        f"Ticket ID: {complaint.ticket_id}\n"
+        f"Title: {complaint.title}\n"
+        f"Status: {complaint.get_status_display()}\n"
+        f"Priority: {complaint.get_priority_display()}\n\n"
+        "You can sign in to your citizen dashboard to track updates."
     )
+    return send_portal_email(subject, message, [email])
+
+
+def send_portal_email(subject, message, recipients):
+    if not recipients:
+        return False
+
+    from_email = getattr(settings, "EMAIL_HOST_USER", "") or settings.DEFAULT_FROM_EMAIL
+    try:
+        sent = send_mail(
+            subject,
+            message,
+            from_email,
+            recipients,
+            fail_silently=False,
+        )
+    except Exception as exc:
+        print(f"Email send failed: {exc}")
+        return False
     return sent > 0
 
 

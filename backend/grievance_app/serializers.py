@@ -64,6 +64,7 @@ class ComplaintHistorySerializer(serializers.ModelSerializer):
 
 class ComplaintSerializer(serializers.ModelSerializer):
     citizen_name = serializers.CharField(source="citizen.get_full_name", read_only=True)
+    complainant_email = serializers.SerializerMethodField()
     department_name = serializers.CharField(source="department.name", read_only=True)
     officer_name = serializers.CharField(source="assigned_officer.get_full_name", read_only=True)
     history = ComplaintHistorySerializer(many=True, read_only=True)
@@ -96,8 +97,13 @@ class ComplaintSerializer(serializers.ModelSerializer):
             return round(delta.total_seconds() / 3600, 1)
         return None
 
+    def get_complainant_email(self, obj):
+        return obj.citizen.email
+
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):
+    complainant_email = serializers.EmailField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = Complaint
         fields = [
@@ -117,9 +123,7 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
         from django.conf import settings
         from django.utils import timezone
 
-        request = self.context.get("request")
-        if request and not validated_data.get("complainant_email"):
-            validated_data["complainant_email"] = request.user.email
+        validated_data.pop("complainant_email", None)
 
         text = validated_data["description"]
         ai_result = classify_complaint(text)

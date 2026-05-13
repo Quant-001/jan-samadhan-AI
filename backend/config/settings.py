@@ -198,10 +198,12 @@ EMAIL_BACKEND = os.getenv(
 )
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = True
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False") == "True"
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "15"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@jansamadhan.in")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL") or EMAIL_HOST_USER or "noreply@jansamadhan.in"
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "True") == "True"
 EMAIL_VERIFICATION_MAX_AGE_SECONDS = int(os.getenv("EMAIL_VERIFICATION_MAX_AGE_SECONDS", "172800"))

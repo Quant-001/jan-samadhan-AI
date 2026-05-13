@@ -44,7 +44,12 @@ function suggestTitleFromSpeech(text) {
 function getApiErrorMessage(err, fallback) {
   const data = err.response?.data;
   if (!data) return err.message || fallback;
-  if (typeof data === "string") return data;
+  if (typeof data === "string") {
+    if (data.includes("<html") || data.includes("<!doctype")) {
+      return "Server error while submitting complaint. Please redeploy the backend and try again.";
+    }
+    return data;
+  }
   if (data.detail) return data.detail;
   if (data.error) return data.error;
 
