@@ -1,8 +1,8 @@
 {
   "model_type": "multinomial_naive_bayes",
   "version": 1,
-  "total_docs": 33,
-  "vocabulary_size": 146,
+  "total_docs": 34,
+  "vocabulary_size": 150,
   "categories": {
     "ELECTRICITY": {
       "doc_count": 6,
@@ -185,8 +185,8 @@
       }
     },
     "EDUCATION": {
-      "doc_count": 4,
-      "token_total": 15,
+      "doc_count": 5,
+      "token_total": 21,
       "token_counts": {
         "school": 1,
         "no": 1,
@@ -202,7 +202,11 @@
         "college": 1,
         "fee": 1,
         "refund": 1,
-        "pending": 1
+        "pending": 1,
+        "electricity": 1,
+        "thes": 2,
+        "s": 1,
+        "djdljdfljdfsjkjdsljdfjk": 2
       }
     },
     "OTHER": {
