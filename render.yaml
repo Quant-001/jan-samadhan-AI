@@ -47,7 +47,9 @@ services:
       - key: DB_SSLMODE
         value: require
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: jan-samadhan-db
+          property: connectionString
       - key: REDIS_URL
         fromService:
           type: keyvalue
