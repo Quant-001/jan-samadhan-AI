@@ -9,7 +9,7 @@ import { formatDate } from "../../utils/helpers";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../hooks/useLanguage";
 import toast from "react-hot-toast";
-import { CheckCircle2, Loader2, MailCheck, MapPin, Mic, MicOff, Plus, RefreshCw, ShieldCheck, Volume2, X, Zap } from "lucide-react";
+import { CheckCircle2, MapPin, Mic, MicOff, Plus, ShieldCheck, Volume2, X, Zap } from "lucide-react";
 
 const speechLanguageMap = {
   en: "en-IN",
@@ -75,9 +75,6 @@ export default function CitizenDashboard() {
   const [isListening, setIsListening] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [voiceInterim, setVoiceInterim] = useState("");
-  const [complaintOtp, setComplaintOtp] = useState("");
-  const [complaintOtpSent, setComplaintOtpSent] = useState(false);
-  const [complaintDevOtp, setComplaintDevOtp] = useState("");
   const emptyForm = {
     complainant_name: user?.first_name || "",
     complainant_email: user?.email || "",
@@ -100,17 +97,11 @@ export default function CitizenDashboard() {
   const complaints = data?.results || data || [];
 
   const openComplaintForm = useCallback(() => {
-    setComplaintOtp("");
-    setComplaintOtpSent(false);
-    setComplaintDevOtp("");
     setShowForm(true);
   }, []);
 
   const closeComplaintForm = useCallback(() => {
     setShowForm(false);
-    setComplaintOtp("");
-    setComplaintOtpSent(false);
-    setComplaintDevOtp("");
   }, []);
 
   useEffect(() => {
@@ -142,20 +133,6 @@ export default function CitizenDashboard() {
     onError: (err) => toast.error(getApiErrorMessage(err, t("Submission failed"))),
   });
 
-  const requestOtpMutation = useMutation({
-    mutationFn: () => complaintApi.requestOtp(),
-    onSuccess: (res) => {
-      setComplaintOtpSent(true);
-      setComplaintDevOtp(res.data?.dev_otp || "");
-      const isDevelopmentOtp = res.data?.email_sent === false && res.data?.dev_otp;
-      const message = isDevelopmentOtp
-        ? t("Use the Development OTP shown below to submit this complaint.")
-        : t(res.data?.detail || "Complaint OTP sent to your registered email.");
-      if (res.data?.email_sent === false && !isDevelopmentOtp) toast.error(message);
-      else toast.success(message);
-    },
-    onError: (err) => toast.error(getApiErrorMessage(err, t("Could not send complaint OTP"))),
-  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -167,7 +144,6 @@ export default function CitizenDashboard() {
     fd.append("location", form.location);
     fd.append("sector", form.sector);
     fd.append("pin_code", form.pin_code);
-    fd.append("complaint_otp", complaintOtp);
     if (form.attachment) fd.append("attachment", form.attachment);
     if (form.video) fd.append("attachment", form.video);
     if (form.audio) fd.append("attachment", form.audio);
@@ -460,60 +436,8 @@ export default function CitizenDashboard() {
                 onChange={(e) => setForm({ ...form, attachment: e.target.files[0] })} />
             </div>
 
-            <div className="rounded border border-cyan-100 bg-cyan-50 p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="flex items-center gap-2 text-sm font-black text-slate-950">
-                    <MailCheck size={17} className="text-cyan-700" /> {t("Email OTP for complaint submission")}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-600">
-                    {complaintOtpSent
-                      ? t("Enter the 6 digit OTP sent to your registered email.")
-                      : t("Send an OTP to authenticate this complaint before submitting.")}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => requestOtpMutation.mutate()}
-                  disabled={requestOtpMutation.isPending || !user?.is_verified}
-                  className="inline-flex items-center justify-center gap-2 rounded bg-slate-950 px-4 py-2 text-sm font-black text-cyan-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {requestOtpMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
-                  {complaintOtpSent ? t("Resend OTP") : t("Send OTP")}
-                </button>
-              </div>
-              <div className="mt-3 max-w-xs">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t("Complaint OTP")}</label>
-                <input
-                  className="input text-center font-mono text-lg tracking-[0.35em]"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={complaintOtp}
-                  onChange={(e) => setComplaintOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
-                  required
-                />
-              </div>
-              {complaintDevOtp && (
-                <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold">{t("Development OTP")}</p>
-                      <p className="font-mono text-lg tracking-[0.25em]">{complaintDevOtp}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setComplaintOtp(complaintDevOtp)}
-                      className="rounded border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100"
-                    >
-                      {t("Use OTP")}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
             <div className="flex gap-3">
-              <button type="submit" disabled={createMutation.isPending || !user?.is_verified || complaintOtp.length !== 6} className="btn-primary">
+              <button type="submit" disabled={createMutation.isPending} className="btn-primary">
                 {createMutation.isPending ? t("Submitting...") : t("Submit Complaint")}
               </button>
               <button type="button" onClick={closeComplaintForm} className="btn-secondary">{t("Cancel")}</button>

@@ -2,16 +2,12 @@ import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { authApi } from "../api";
 import toast from "react-hot-toast";
-import { LogIn, MailCheck, RefreshCw, Search, ShieldCheck, Loader2, Mail, Lock, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { LogIn, MailCheck, Search, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
-  const [step, setStep] = useState("credentials"); // credentials, otp
   const [form, setForm] = useState({ username: "", password: "" });
-  const [otpForm, setOtpForm] = useState({ otp: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [otpData, setOtpData] = useState(null); // Store user_id and email for OTP verification
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from;
@@ -25,51 +21,19 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      // Try OTP-based login first (for citizens)
-      const { data } = await authApi.requestLoginOtp({
-        username: form.username,
-        password: form.password,
-      });
-
-      // If we get here and it's a citizen, we need OTP
-      if (data.user_id) {
-        setOtpData({
-          user_id: data.user_id,
-          email: data.email,
-          username: data.username,
-          devOtp: data.dev_otp || "",
-        });
-        setStep("otp");
-        const isDevelopmentOtp = data?.email_sent === false && data?.dev_otp;
-        const message = isDevelopmentOtp
-          ? "Use the Development OTP shown below to sign in."
-          : data?.detail || "OTP sent to your email";
-        if (data?.email_sent === false && !isDevelopmentOtp) toast.error(message);
-        else toast.success(message);
-      } else {
-        // For officers/admins, they got tokens directly
-        localStorage.setItem("access_token", data.access);
-        localStorage.setItem("refresh_token", data.refresh);
-        const userData = data.user;
-        toast.success(`Welcome back, ${userData.first_name || userData.username}!`);
-        if (from && userData.role === "CITIZEN") navigate(from, { replace: true });
-        else if (userData.role === "ADMIN") navigate("/admin/dashboard");
-        else if (userData.role === "OFFICER") navigate("/officer/dashboard");
-        else navigate("/citizen/dashboard");
-      }
+      const { data } = await authApi.login(form);
+      localStorage.setItem("access_token", data.access);
+      localStorage.setItem("refresh_token", data.refresh);
+      const userData = data.user;
+      toast.success(`Welcome back, ${userData.first_name || userData.username}!`);
+      if (from && userData.role === "CITIZEN") navigate(from, { replace: true });
+      else if (userData.role === "ADMIN") navigate("/admin/dashboard");
+      else if (userData.role === "OFFICER") navigate("/officer/dashboard");
+      else navigate("/citizen/dashboard");
     } catch (err) {
       const detail = err.response?.data?.detail;
       if (detail) {
         toast.error(detail);
-        if (err.response?.status === 403 && detail.toLowerCase().includes("verify your email")) {
-          navigate("/verify-email", {
-            state: {
-              from,
-              verificationEmail: err.response?.data?.email || form.username,
-              verificationMessage: "Verify your email with the OTP before signing in.",
-            },
-          });
-        }
       } else if (!err.response) {
         toast.error("Login server is not reachable. Please try again later.");
       } else if (err.response.status === 401) {
@@ -80,67 +44,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleOtpSubmit = async (e) => {
-    e.preventDefault();
-    if (otpForm.otp.length !== 6) {
-      toast.error("Enter a 6-digit OTP");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data } = await authApi.verifyLoginOtp({
-        user_id: otpData.user_id,
-        otp: otpForm.otp,
-      });
-
-      localStorage.setItem("access_token", data.access);
-      localStorage.setItem("refresh_token", data.refresh);
-      const userData = data.user;
-      toast.success(`Welcome back, ${userData.first_name || userData.username}!`);
-      if (from) navigate(from, { replace: true });
-      else navigate("/citizen/dashboard");
-    } catch (err) {
-      const detail = err.response?.data?.detail;
-      if (detail) {
-        toast.error(detail);
-      } else {
-        toast.error("OTP verification failed");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (!otpData?.user_id) {
-      toast.error("Unable to resend OTP");
-      return;
-    }
-
-    setResending(true);
-    try {
-      const { data } = await authApi.resendLoginOtp({ user_id: otpData.user_id });
-      setOtpData((current) => current ? { ...current, devOtp: data?.dev_otp || "" } : current);
-      const isDevelopmentOtp = data?.email_sent === false && data?.dev_otp;
-      const message = isDevelopmentOtp
-        ? "Use the Development OTP shown below to sign in."
-        : data?.detail || "OTP sent to your email";
-      if (data?.email_sent === false && !isDevelopmentOtp) toast.error(message);
-      else toast.success(message);
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Could not send OTP");
-    } finally {
-      setResending(false);
-    }
-  };
-
-  const handleBackToCredentials = () => {
-    setStep("credentials");
-    setOtpForm({ otp: "" });
-    setOtpData(null);
   };
 
   return (
@@ -156,12 +59,10 @@ export default function LoginPage() {
           <div className="mb-7 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded bg-cyan-400 text-lg font-black text-slate-950">JS</div>
             <h1 className="text-2xl font-extrabold text-slate-950">
-              {step === "credentials" ? "Sign in" : "Verify OTP"}
+              Sign in
             </h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              {step === "credentials" 
-                ? "Access citizen, officer, or admin dashboard"
-                : `We sent an OTP to ${otpData?.email}`}
+              Access citizen, officer, or admin dashboard
             </p>
           </div>
 
@@ -174,8 +75,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {step === "credentials" ? (
-            <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+          <form onSubmit={handleCredentialsSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Username or Email</label>
                 <div className="relative">
@@ -214,84 +114,13 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm">
-                <div className="flex gap-2">
-                  <AlertCircle size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-blue-800 text-xs">
-                    <span className="font-semibold">Citizens:</span> You'll verify with an OTP sent to your email after login.
-                  </p>
-                </div>
-              </div>
-
               <button type="submit" disabled={loading} className="btn-primary flex w-full items-center justify-center gap-2 py-2.5 text-base">
                 {loading ? <Loader2 className="animate-spin" size={18} /> : <LogIn size={18} />}
                 {loading ? "Please wait..." : "Continue"}
               </button>
             </form>
-          ) : (
-            <form onSubmit={handleOtpSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">6-Digit OTP</label>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-2.5 text-gray-400" />
-                  <input
-                    className="input pl-9 text-center font-mono text-lg tracking-[0.35em]"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={otpForm.otp}
-                    onChange={(e) => setOtpForm({ otp: e.target.value.replace(/\D/g, "").slice(0, 6) })}
-                    placeholder="000000"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <p className="mt-2 text-xs text-slate-600">Check your email inbox for the verification code</p>
-              </div>
-              {otpData?.devOtp && (
-                <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold">Development OTP</p>
-                      <p className="font-mono text-lg tracking-[0.25em]">{otpData.devOtp}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setOtpForm({ otp: otpData.devOtp })}
-                      className="rounded border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100"
-                    >
-                      Use OTP
-                    </button>
-                  </div>
-                </div>
-              )}
 
-              <button type="submit" disabled={loading || otpForm.otp.length !== 6} className="btn-primary flex w-full items-center justify-center gap-2 py-2.5 text-base">
-                {loading ? <Loader2 className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
-                {loading ? "Verifying..." : "Verify & Sign In"}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={resending}
-                className="btn-secondary flex w-full items-center justify-center gap-2 py-2.5 text-sm"
-              >
-                <RefreshCw size={16} className={resending ? "animate-spin" : ""} />
-                {resending ? "Sending..." : "Resend OTP"}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleBackToCredentials}
-                className="w-full text-sm text-slate-600 hover:text-slate-900 py-2 font-semibold"
-              >
-                ← Back to login
-              </button>
-            </form>
-          )}
-
-          {step === "credentials" && (
+          {
             <>
               <div className="mt-6 border-t border-gray-200 pt-4 text-center text-sm font-semibold">
                 <Link to="/register" state={{ from }} className="mr-4 text-cyan-700 hover:underline">
@@ -302,7 +131,7 @@ export default function LoginPage() {
                 </Link>
               </div>
             </>
-          )}
+          }
         </div>
       </div>
     </div>

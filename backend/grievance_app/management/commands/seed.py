@@ -1,14 +1,19 @@
+import os
+
 from django.core.management.base import BaseCommand
 from grievance_app.models import Department, User
 
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "Admin@1234"
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 
 class Command(BaseCommand):
     help = "Seed initial departments and create superadmin"
 
     def handle(self, *args, **kwargs):
+        if not ADMIN_PASSWORD:
+            self.stderr.write("Set ADMIN_PASSWORD before running seed.")
+            return
         departments = [
             {"name": "Electricity Department", "code": "ELECTRICITY", "email": "electricity@jansamadhan.in", "government_level": "STATE"},
             {"name": "Water Supply Department", "code": "WATER", "email": "water@jansamadhan.in", "government_level": "STATE"},

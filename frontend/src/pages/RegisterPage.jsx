@@ -22,20 +22,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const { data } = await authApi.register(form);
-      const isDevelopmentOtp = data?.email_sent === false && data?.dev_otp;
-      const message = isDevelopmentOtp
-        ? "Account created. Use the Development OTP shown below to verify your email."
-        : data?.detail || "Account created. Check your email for the OTP.";
-      if (data?.email_sent === false && !isDevelopmentOtp) toast.error(message);
-      else toast.success(message);
-      navigate("/verify-email", {
-        state: {
-          from,
-          verificationEmail: form.email,
-          verificationMessage: message,
-          devOtp: data?.dev_otp || "",
-        },
-      });
+      toast.success(data?.detail || "Account created. You can sign in now.");
+      navigate("/login", { state: { from } });
     } catch (err) {
       const errors = err.response?.data;
       const msg = errors ? Object.values(errors).flat().join(" ") : "Registration failed";
