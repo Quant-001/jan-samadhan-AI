@@ -117,7 +117,7 @@ export default function VerifyEmailPage() {
                     type="text"
                     value={form.identifier}
                     onChange={(e) => setForm({ ...form, identifier: e.target.value })}
-                    placeholder="citizen@example.com or citizen_demo"
+                    placeholder="citizen@example.com or username"
                     required
                   />
                 </div>

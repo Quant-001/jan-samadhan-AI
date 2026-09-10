@@ -50,6 +50,19 @@ def otp_delivery_detail(sent_detail, fallback_detail=None):
     }
 
 
+def otp_delivery_response(email_sent, details, dev_payload=None):
+    """Return a usable response without hiding production email failures."""
+    payload = {
+        "detail": details["sent"] if email_sent else details["fallback"],
+        "email_sent": email_sent,
+    }
+    if dev_payload:
+        payload.update(dev_payload)
+    if not email_sent and not settings.DEBUG:
+        return Response(payload, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    return Response(payload)
+
+
 def dev_otp_payload(user, field_name):
     if not settings.DEBUG:
         return {}
@@ -109,14 +122,16 @@ class LoginRequestOTPView(APIView):
             # Send OTP for citizens
             email_sent = send_login_otp_email(user)
             details = otp_delivery_detail("OTP sent to your registered email.")
-            return Response({
-                "detail": details["sent"] if email_sent else details["fallback"],
-                "email_sent": email_sent,
-                "user_id": user.id,
-                "username": user.username,
-                "email": user.email,
-                **dev_otp_payload(user, "login_otp"),
-            })
+            return otp_delivery_response(
+                email_sent,
+                details,
+                {
+                    "user_id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    **dev_otp_payload(user, "login_otp"),
+                },
+            )
         else:
             # Officers and admins get regular login (no OTP required for them)
             serializer = VerifiedTokenObtainPairSerializer(data={
@@ -209,11 +224,11 @@ class ResendLoginOTPView(APIView):
 
         email_sent = send_login_otp_email(user)
         details = otp_delivery_detail("OTP sent to your email.")
-        return Response({
-            "detail": details["sent"] if email_sent else details["fallback"],
-            "email_sent": email_sent,
-            **dev_otp_payload(user, "login_otp"),
-        })
+        return otp_delivery_response(
+            email_sent,
+            details,
+            dev_otp_payload(user, "login_otp"),
+        )
 
 
 class RegisterView(generics.CreateAPIView):
@@ -315,11 +330,11 @@ class ResendVerificationEmailView(APIView):
 
         email_sent = send_verification_email(user)
         details = otp_delivery_detail("Verification OTP sent. Please check your inbox.")
-        return Response({
-            "detail": details["sent"] if email_sent else details["fallback"],
-            "email_sent": email_sent,
-            **dev_otp_payload(user, "email_verification_otp"),
-        })
+        return otp_delivery_response(
+            email_sent,
+            details,
+            dev_otp_payload(user, "email_verification_otp"),
+        )
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -391,12 +406,14 @@ class ComplaintRequestOTPView(APIView):
 
         email_sent = send_complaint_submission_otp_email(request.user)
         details = otp_delivery_detail("Complaint submission OTP sent to your registered email.")
-        return Response({
-            "detail": details["sent"] if email_sent else details["fallback"],
-            "email_sent": email_sent,
-            "email": request.user.email,
-            **dev_otp_payload(request.user, "complaint_submission_otp"),
-        })
+        return otp_delivery_response(
+            email_sent,
+            details,
+            {
+                "email": request.user.email,
+                **dev_otp_payload(request.user, "complaint_submission_otp"),
+            },
+        )
 
 
 class CitizenComplaintListCreateView(generics.ListCreateAPIView):

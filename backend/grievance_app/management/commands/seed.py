@@ -1,6 +1,5 @@
 from django.core.management.base import BaseCommand
-from django.utils import timezone
-from grievance_app.models import Complaint, ComplaintHistory, Department, User
+from grievance_app.models import Department, User
 
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Admin@1234"
@@ -58,84 +57,9 @@ class Command(BaseCommand):
             "EDUCATION": {"label": "Education", "slug": "education", "prefix": "EDU", "pin": "452007", "sector": "School Zone", "ward": "Ward 14"},
             "OTHER": {"label": "General", "slug": "general", "prefix": "GEN", "pin": "452008", "sector": "Central Desk", "ward": "Ward 1"},
         }
-        officer_tree = {}
         for code, profile in department_profiles.items():
             department = Department.objects.get(code=code)
-            officer_tree[code] = self._seed_department_officers(department, profile)
-
-        electricity = Department.objects.get(code="ELECTRICITY")
-        water = Department.objects.get(code="WATER")
-        main_officer = officer_tree["ELECTRICITY"]["head"]
-        senior_officer = officer_tree["ELECTRICITY"]["officer"]
-        field_officer = officer_tree["ELECTRICITY"]["field"]
-        water_main = officer_tree["WATER"]["head"]
-
-        citizen = self._upsert_user(
-            username="citizen_demo",
-            password="Citizen@1234",
-            email="citizen.demo@jansamadhan.in",
-            first_name="Demo",
-            last_name="Citizen",
-            role="CITIZEN",
-        )
-
-        if Complaint.objects.count() == 0:
-            resolved = Complaint.objects.create(
-                citizen=citizen,
-                complainant_name="Demo Citizen",
-                valid_id_number="DEMO-ID-1001",
-                title="Street light repaired",
-                description="Street light near ward 12 was not working.",
-                category="ELECTRICITY",
-                priority="MEDIUM",
-                status="RESOLVED",
-                department=electricity,
-                assigned_officer=field_officer,
-                location="Ward 12",
-                sector="Ward 12",
-                pin_code="452001",
-                officer_remarks="Resolved and verified by field officer.",
-                resolved_at=timezone.now(),
-            )
-            ComplaintHistory.objects.create(
-                complaint=resolved,
-                changed_by=field_officer,
-                old_status="IN_PROGRESS",
-                new_status="RESOLVED",
-                note="Demo complaint resolved.",
-            )
-            Complaint.objects.create(
-                citizen=citizen,
-                complainant_name="Demo Citizen",
-                valid_id_number="DEMO-ID-1002",
-                title="Voltage fluctuation in locality",
-                description="Frequent voltage drops in the evening.",
-                category="ELECTRICITY",
-                priority="HIGH",
-                status="ASSIGNED",
-                department=electricity,
-                assigned_officer=senior_officer,
-                location="Sector 4",
-                sector="Sector 4",
-                pin_code="452001",
-            )
-            Complaint.objects.create(
-                citizen=citizen,
-                complainant_name="Demo Citizen",
-                valid_id_number="DEMO-ID-1003",
-                title="Water supply delay",
-                description="Water supply starts late every morning.",
-                category="WATER",
-                priority="MEDIUM",
-                status="PENDING",
-                department=water,
-                assigned_officer=water_main,
-                location="Main road, Sector 9",
-                sector="Sector 9",
-                pin_code="452002",
-                routing_note="Demo water complaint routed to Water Department main officer for Sector 9 / 452002.",
-            )
-            self.stdout.write(self.style.SUCCESS("  Demo complaints created."))
+            self._seed_department_officers(department, profile)
 
         try:
             from axes.models import AccessAttempt, AccessFailureLog

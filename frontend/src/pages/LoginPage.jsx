@@ -20,7 +20,7 @@ export default function LoginPage() {
   const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
     if (form.username.includes("*")) {
-      toast.error("Use an exact username, for example officer_electricity or head_water.");
+      toast.error("Enter your exact username or email address.");
       return;
     }
     setLoading(true);
@@ -142,13 +142,6 @@ export default function LoginPage() {
     setOtpForm({ otp: "" });
     setOtpData(null);
   };
-
-  const demoAccounts = [
-    { label: "Electricity Officer", username: "officer_electricity", password: "Officer@1234" },
-    { label: "Water Head", username: "head_water", password: "Head@1234" },
-    { label: "Admin", username: "admin", password: "Admin@1234" },
-    { label: "Citizen", username: "citizen_demo", password: "Citizen@1234" },
-  ];
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,0.18),transparent_30%),linear-gradient(135deg,#f8fafc_0%,#e2e8f0_100%)]">
@@ -300,23 +293,6 @@ export default function LoginPage() {
 
           {step === "credentials" && (
             <>
-              <div className="mt-5 rounded border border-cyan-100 bg-cyan-50 p-3">
-                <p className="text-xs font-black uppercase tracking-wide text-cyan-800">Demo Logins</p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {demoAccounts.map((account) => (
-                    <button
-                      key={account.username}
-                      type="button"
-                      onClick={() => setForm({ username: account.username, password: account.password })}
-                      className="rounded border border-cyan-200 bg-white px-3 py-2 text-left text-xs font-bold text-slate-800 hover:border-cyan-500 hover:text-cyan-800"
-                    >
-                      <span className="block">{account.label}</span>
-                      <span className="font-mono text-[11px] text-slate-500">{account.username}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div className="mt-6 border-t border-gray-200 pt-4 text-center text-sm font-semibold">
                 <Link to="/register" state={{ from }} className="mr-4 text-cyan-700 hover:underline">
                   Click here to sign up
