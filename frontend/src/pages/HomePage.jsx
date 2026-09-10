@@ -19,51 +19,14 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
-  Sun,
 } from "lucide-react";
 import { publicApi } from "../api";
 import Chatbot from "../components/Shared/Chatbot";
 import { languages, useLanguage } from "../hooks/useLanguage";
+import { useTheme } from "../hooks/useTheme";
 
 const HOME_THEMES = [
   {
-    key: "blue",
-    label: "Blue",
-    accent: "#22d3ee",
-    accentHover: "#67e8f9",
-    accentContrast: "#020617",
-    soft: "rgba(34, 211, 238, 0.12)",
-    border: "rgba(103, 232, 249, 0.34)",
-    hero: "linear-gradient(135deg,#020617 0%,#0f172a 44%,#083344 100%)",
-    page: "#020617",
-    section: "#0f172a",
-    sectionAlt: "#111827",
-    card: "rgba(255,255,255,0.06)",
-    cardStrong: "rgba(2,6,23,0.8)",
-    text: "#f8fafc",
-    muted: "#cbd5e1",
-    faint: "#94a3b8",
-    line: "rgba(255,255,255,0.1)",
-  },
-  {
-    key: "amber",
-    label: "Amber",
-    accent: "#fbbf24",
-    accentHover: "#fde68a",
-    accentContrast: "#1c1917",
-    soft: "rgba(251, 191, 36, 0.12)",
-    border: "rgba(253, 230, 138, 0.34)",
-    hero: "linear-gradient(135deg,#020617 0%,#111827 48%,#713f12 100%)",
-    page: "#020617",
-    section: "#0f172a",
-    sectionAlt: "#111827",
-    card: "rgba(255,255,255,0.06)",
-    cardStrong: "rgba(2,6,23,0.8)",
-    text: "#f8fafc",
-    muted: "#cbd5e1",
-    faint: "#94a3b8",
-    line: "rgba(255,255,255,0.1)",
-  },
   {
     key: "light",
     label: "Light",
@@ -82,6 +45,25 @@ const HOME_THEMES = [
     muted: "#334155",
     faint: "#64748b",
     line: "rgba(15,23,42,0.12)",
+  },
+  {
+    key: "dark",
+    label: "Dark",
+    accent: "#22d3ee",
+    accentHover: "#67e8f9",
+    accentContrast: "#020617",
+    soft: "rgba(34, 211, 238, 0.12)",
+    border: "rgba(103, 232, 249, 0.34)",
+    hero: "linear-gradient(135deg,#020617 0%,#0f172a 44%,#083344 100%)",
+    page: "#020617",
+    section: "#0f172a",
+    sectionAlt: "#111827",
+    card: "rgba(255,255,255,0.06)",
+    cardStrong: "rgba(2,6,23,0.8)",
+    text: "#f8fafc",
+    muted: "#cbd5e1",
+    faint: "#94a3b8",
+    line: "rgba(255,255,255,0.1)",
   },
 ];
 
@@ -107,12 +89,8 @@ function themeStyle(theme) {
 
 export default function HomePage() {
   const { t, language, setLanguage } = useLanguage();
-  const [themeKey, setThemeKey] = useState(() => localStorage.getItem("jan-home-theme") || "blue");
-  const activeTheme = HOME_THEMES.find((theme) => theme.key === themeKey) || HOME_THEMES[0];
-
-  useEffect(() => {
-    localStorage.setItem("jan-home-theme", activeTheme.key);
-  }, [activeTheme.key]);
+  const { theme, setTheme } = useTheme();
+  const activeTheme = HOME_THEMES.find((item) => item.key === theme) || HOME_THEMES[0];
 
   const { data: publicStats } = useQuery({
     queryKey: ["public-stats"],
@@ -175,7 +153,7 @@ export default function HomePage() {
             <HomePreferences
               themes={HOME_THEMES}
               activeKey={activeTheme.key}
-              onThemeChange={setThemeKey}
+              onThemeChange={setTheme}
               language={language}
               onLanguageChange={setLanguage}
               className="hidden md:block"
@@ -306,7 +284,6 @@ function HomePreferences({ themes, activeKey, onThemeChange, language, onLanguag
         <Languages size={16} className="text-[var(--theme-accent)]" />
         <span>{activeLanguage.label}</span>
         <span className="h-4 w-px bg-[var(--theme-line)]" />
-        <Sun size={16} />
         <span>{activeTheme.label}</span>
         <ChevronDown size={15} className={`transition ${isOpen ? "rotate-180" : ""}`} />
       </button>

@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Languages, Sun, ChevronDown } from "lucide-react";
+import { Languages, Sun, Moon, ChevronDown } from "lucide-react";
 import { languages, useLanguage } from "../../hooks/useLanguage";
+import { useTheme } from "../../hooks/useTheme";
 
 export default function ThemeLangToggle({ variant = "dark", className = "" }) {
   const [isOpen, setIsOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const isLight = variant === "light";
 
   const buttonClass = isLight
@@ -20,7 +22,7 @@ export default function ThemeLangToggle({ variant = "dark", className = "" }) {
     : "hover:bg-slate-700";
 
   const currentLangLabel = languages.find((l) => l.code === language)?.label || "Language";
-  const currentThemeLabel = t("Light");
+  const currentThemeLabel = t(theme === "dark" ? "Dark" : "Light");
 
   return (
     <div className={`relative inline-block ${className}`}>
@@ -34,7 +36,7 @@ export default function ThemeLangToggle({ variant = "dark", className = "" }) {
         <Languages size={16} className={isLight ? "text-amber-600" : "text-amber-300"} />
         <span className="hidden sm:inline">{currentLangLabel}</span>
         <span className={isLight ? "h-4 w-px bg-slate-200" : "h-4 w-px bg-white/15"} />
-        <Sun size={16} className={isLight ? "text-slate-600" : "text-slate-300"} />
+        {theme === "dark" ? <Moon size={16} className={isLight ? "text-slate-600" : "text-slate-300"} /> : <Sun size={16} className={isLight ? "text-slate-600" : "text-slate-300"} />}
         <span className="hidden lg:inline">{currentThemeLabel}</span>
         <ChevronDown size={14} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
@@ -81,9 +83,28 @@ export default function ThemeLangToggle({ variant = "dark", className = "" }) {
               <p className="text-xs font-semibold uppercase tracking-wider mb-2 text-slate-600 dark:text-slate-400">
                 {t("Theme")}
               </p>
-              <div className="flex items-center gap-2 rounded bg-orange-50 px-2 py-2 text-sm font-semibold text-orange-700">
-                <Sun size={14} />
-                {t("Light")}
+              <div className="grid grid-cols-2 gap-2">
+                {["light", "dark"].map((option) => {
+                  const isDark = option === "dark";
+                  const Icon = isDark ? Moon : Sun;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setTheme(option)}
+                      className={`flex items-center justify-center gap-2 rounded px-2 py-2 text-sm font-semibold transition-colors ${
+                        theme === option
+                          ? isLight
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-amber-600/30 text-amber-300"
+                          : optionHoverClass
+                      }`}
+                    >
+                      <Icon size={14} />
+                      {t(isDark ? "Dark" : "Light")}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

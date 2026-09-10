@@ -2,13 +2,14 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const STORAGE_KEY = "jan-samadhan-theme";
 const DEFAULT_THEME = "light";
+const THEMES = ["light", "dark"];
 
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved || DEFAULT_THEME;
+    return THEMES.includes(saved) ? saved : DEFAULT_THEME;
   });
 
   useEffect(() => {
@@ -23,7 +24,7 @@ export function ThemeProvider({ children }) {
   }, [theme]);
 
   const setTheme = (newTheme) => {
-    setThemeState(newTheme);
+    setThemeState(THEMES.includes(newTheme) ? newTheme : DEFAULT_THEME);
   };
 
   const toggleTheme = () => {
