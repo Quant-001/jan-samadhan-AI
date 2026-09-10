@@ -1,4 +1,5 @@
 from urllib.parse import quote
+import logging
 import random
 
 from django.conf import settings
@@ -14,6 +15,7 @@ from .models import User
 
 
 EMAIL_VERIFICATION_SALT = "grievance_app.email_verification"
+logger = logging.getLogger(__name__)
 
 
 def make_email_verification_otp(user):
@@ -102,6 +104,12 @@ def send_portal_email(subject, message, recipients):
 
     from_email = getattr(settings, "EMAIL_HOST_USER", "") or settings.DEFAULT_FROM_EMAIL
     email_backend = getattr(settings, "EMAIL_BACKEND", "")
+    if not from_email or not getattr(settings, "EMAIL_HOST_USER", ""):
+        logger.error("OTP email not sent: EMAIL_HOST_USER is not configured")
+        return False
+    if ".console." in email_backend:
+        logger.error("OTP email not sent: console email backend is active")
+        return False
     try:
         sent = send_mail(
             subject,
@@ -111,12 +119,13 @@ def send_portal_email(subject, message, recipients):
             fail_silently=False,
         )
     except Exception as exc:
-        print(f"Email send failed: {exc}")
+        logger.exception("OTP email send failed for %s: %s", recipients, exc)
         return False
-    if ".console." in email_backend:
-        print("Email was written to the backend console because SMTP email is not configured.")
+    if sent <= 0:
+        logger.error("OTP email backend accepted no recipients: %s", recipients)
         return False
-    return sent > 0
+    logger.info("OTP email accepted by SMTP server for %s", recipients)
+    return True
 
 
 def verify_email_token(uidb64, token):
