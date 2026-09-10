@@ -27,7 +27,6 @@ import { useTheme } from "../hooks/useTheme";
 
 const HOME_THEMES = [
   {
-  {
     key: "light",
     label: "Light",
     accent: "#f59e0b",

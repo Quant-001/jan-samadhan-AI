@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import ThemeLangToggle from "../components/Shared/ThemeLangToggle";
 import toast from "react-hot-toast";
 import { LogIn, MailCheck, Search, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
@@ -24,10 +25,14 @@ export default function LoginPage() {
     try {
       const userData = await login(form);
       toast.success(`Welcome back, ${userData.first_name || userData.username}!`);
-      if (from && userData.role === "CITIZEN") navigate(from, { replace: true });
-      else if (userData.role === "ADMIN") navigate("/admin/dashboard");
-      else if (userData.role === "OFFICER") navigate("/officer/dashboard");
-      else navigate("/citizen/dashboard");
+      const destination = from && userData.role === "CITIZEN"
+        ? from
+        : userData.role === "ADMIN"
+          ? "/admin/dashboard"
+          : userData.role === "OFFICER"
+            ? "/officer/dashboard"
+            : "/citizen/dashboard";
+      window.location.assign(destination);
     } catch (err) {
       const detail = err.response?.data?.detail;
       if (detail) {
@@ -49,7 +54,10 @@ export default function LoginPage() {
       <div className="bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <span>Jan Samadhan AI</span>
-          <Link to="/" className="hover:underline">Home</Link>
+          <div className="flex items-center gap-3">
+            <ThemeLangToggle variant="dark" />
+            <Link to="/" className="hover:underline">Home</Link>
+          </div>
         </div>
       </div>
       <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-7xl items-center justify-center p-4">

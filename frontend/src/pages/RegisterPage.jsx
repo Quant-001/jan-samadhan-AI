@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { authApi } from "../api";
+import ThemeLangToggle from "../components/Shared/ThemeLangToggle";
 import toast from "react-hot-toast";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
 
@@ -70,7 +71,10 @@ export default function RegisterPage() {
       <div className="bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <span>Jan Samadhan AI</span>
-          <Link to="/" className="hover:underline">Home</Link>
+          <div className="flex items-center gap-3">
+            <ThemeLangToggle variant="dark" />
+            <Link to="/" className="hover:underline">Home</Link>
+          </div>
         </div>
       </div>
       <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-7xl items-center justify-center p-4">
