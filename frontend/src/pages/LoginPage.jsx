@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { authApi } from "../api";
+import { useAuth } from "../hooks/useAuth";
 import toast from "react-hot-toast";
 import { LogIn, MailCheck, Search, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const from = location.state?.from;
   const verificationMessage = location.state?.verificationMessage;
 
@@ -21,10 +22,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const { data } = await authApi.login(form);
-      localStorage.setItem("access_token", data.access);
-      localStorage.setItem("refresh_token", data.refresh);
-      const userData = data.user;
+      const userData = await login(form);
       toast.success(`Welcome back, ${userData.first_name || userData.username}!`);
       if (from && userData.role === "CITIZEN") navigate(from, { replace: true });
       else if (userData.role === "ADMIN") navigate("/admin/dashboard");
