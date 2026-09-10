@@ -167,7 +167,7 @@ class CitizenFeedbackView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated, IsCitizen]
 
     def get_queryset(self):
-        return Complaint.objects.filter(citizen=self.request.user, status="RESOLVED")
+        return Complaint.objects.filter(citizen=self.request.user, status__in=["RESOLVED", "CLOSED"])
 
     def perform_update(self, serializer):
         complaint = serializer.save()

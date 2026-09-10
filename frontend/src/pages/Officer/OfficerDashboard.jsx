@@ -221,7 +221,7 @@ export default function OfficerDashboard() {
                       {t("SLA")}: {formatDate(c.sla_deadline)}
                     </p>
                   )}
-                  {editing !== c.id && !["RESOLVED", "CLOSED"].includes(c.status) && (
+                  {editing !== c.id && c.status !== "CLOSED" && (
                     <button
                       onClick={() => {
                         const nearest = sortOfficersForComplaint(assignableOfficers, c)[0];
@@ -269,6 +269,7 @@ export default function OfficerDashboard() {
                         <option value="ASSIGNED">{t("ASSIGNED")}</option>
                         <option value="IN_PROGRESS">{t("IN_PROGRESS")}</option>
                         <option value="RESOLVED">{t("RESOLVED")}</option>
+                        <option value="CLOSED">{t("CLOSED")}</option>
                       </select>
                     </div>
                     <div>

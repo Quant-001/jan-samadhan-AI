@@ -464,7 +464,7 @@ export default function CitizenDashboard() {
                       <span className="font-medium text-blue-700">{t("Officer remarks")}:</span> {c.officer_remarks}
                     </div>
                   )}
-                  {c.status === "RESOLVED" && !c.citizen_rating && (
+                  {["RESOLVED", "CLOSED"].includes(c.status) && !c.citizen_rating && (
                     <FeedbackForm complaintId={c.id} onDone={() => qc.invalidateQueries(["my-complaints"])} t={t} />
                   )}
                 </div>
