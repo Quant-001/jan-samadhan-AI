@@ -9,7 +9,7 @@ import { formatDate } from "../../utils/helpers";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../hooks/useLanguage";
 import toast from "react-hot-toast";
-import { CheckCircle2, MapPin, Mic, MicOff, Plus, ShieldCheck, Volume2, X, Zap } from "lucide-react";
+import { CheckCircle2, MapPin, Mic, MicOff, Plus, ShieldCheck, Volume2, X } from "lucide-react";
 
 const speechLanguageMap = {
   en: "en-IN",
@@ -266,30 +266,12 @@ export default function CitizenDashboard() {
         {stats.map((s) => <StatCard key={s.label} {...s} />)}
       </div>
 
-      {user && !user.is_verified && (
-        <div className="mb-6 rounded border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
-          {t("Please verify your email before submitting a complaint.")}
-        </div>
-      )}
-
       {showForm && (
         <div className="card mb-6 overflow-hidden">
-          <div className="flex flex-col gap-3 bg-slate-950 px-6 py-4 text-white md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 bg-slate-950 px-6 py-4 text-white">
             <div>
               <h2 className="text-lg font-black">{t("Submit New Complaint")}</h2>
               <p className="text-sm text-slate-300">{t("AI will classify and route it after submission.")}</p>
-            </div>
-            <div className={`inline-flex w-fit items-center gap-2 rounded border px-3 py-2 text-xs font-black uppercase tracking-wide ${
-              user?.is_verified
-                ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
-                : "border-amber-300/40 bg-amber-300/10 text-amber-100"
-            }`}>
-              <ShieldCheck size={15} />
-              {user?.is_verified ? (
-                <span>{t("✓ Email authenticated")}</span>
-              ) : (
-                <span>{t("⚠ Email verification required")}</span>
-              )}
             </div>
           </div>
           <div className="p-6">
@@ -297,20 +279,6 @@ export default function CitizenDashboard() {
             <button onClick={closeComplaintForm} className="p-1 hover:bg-gray-100 rounded"><X size={18} /></button>
           </div>
           
-          {!user?.is_verified && (
-            <div className="mb-4 rounded border border-amber-200 bg-amber-50 p-4">
-              <div className="flex gap-3">
-                <Zap className="text-amber-600 flex-shrink-0" size={20} />
-                <div>
-                  <p className="font-semibold text-amber-950">{t("Email Verification Required")}</p>
-                  <p className="text-sm text-amber-800 mt-1">
-                    {t("Your email must be verified to submit complaints. You will receive an OTP for verification.")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="rounded border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

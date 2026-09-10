@@ -13,17 +13,7 @@ from django.db.models import Count, Q, Avg
 from django.shortcuts import get_object_or_404
 
 from .ai_service import citizen_help_chat, classify_complaint
-from .email_verification import (
-    send_complaint_receipt_email,
-    send_complaint_status_email,
-    send_verification_email,
-    send_login_otp_email,
-    send_complaint_submission_otp_email,
-    verify_email_otp,
-    verify_email_token,
-    verify_login_otp,
-    verify_complaint_submission_otp,
-)
+from .email_verification import send_complaint_receipt_email, send_complaint_status_email
 from .models import User, Department, Complaint, ComplaintHistory, Notification
 from .routing import route_complaint_to_department_head
 from .serializers import (
@@ -35,39 +25,6 @@ from .permissions import IsAdmin, IsOfficer, IsCitizen
 
 
 # ─── Auth ───────────────────────────────────────────────────────────────────
-
-
-def otp_delivery_detail(sent_detail, fallback_detail=None):
-    if fallback_detail is None:
-        fallback_detail = (
-            "OTP generated for local development. Use the Development OTP shown on this page "
-            "or check the backend console. Configure EMAIL_HOST_USER and EMAIL_HOST_PASSWORD "
-            "to send OTP emails."
-        )
-    return {
-        "sent": sent_detail,
-        "fallback": fallback_detail,
-    }
-
-
-def otp_delivery_response(email_sent, details, dev_payload=None):
-    """Return a usable response without hiding production email failures."""
-    payload = {
-        "detail": details["sent"] if email_sent else details["fallback"],
-        "email_sent": email_sent,
-    }
-    if dev_payload:
-        payload.update(dev_payload)
-    if not email_sent and not settings.DEBUG:
-        return Response(payload, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-    return Response(payload)
-
-
-def dev_otp_payload(user, field_name):
-    if not settings.DEBUG:
-        return {}
-    otp = getattr(user, field_name, "")
-    return {"dev_otp": otp} if otp else {}
 
 
 class VerifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -90,91 +47,6 @@ class LoginRequestOTPView(APIView):
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
-class LoginVerifyOTPView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        user_id = request.data.get("user_id")
-        otp = request.data.get("otp", "").strip()
-
-        if not user_id or not otp:
-            return Response(
-                {"detail": "User ID and OTP are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            user = User.objects.get(id=user_id, role="CITIZEN", is_active=True)
-        except User.DoesNotExist:
-            return Response(
-                {"detail": "User not found."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            verify_login_otp(user, otp)
-        except ValueError as e:
-            return Response(
-                {"detail": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except signing.BadSignature:
-            return Response(
-                {"detail": "Invalid OTP. Please try again."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except signing.SignatureExpired:
-            return Response(
-                {"detail": "OTP expired. Please request a new OTP."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Clear login OTP after successful verification
-        user.login_otp = ""
-        user.login_otp_created_at = None
-        user.save(update_fields=["login_otp", "login_otp_created_at"])
-
-        # Generate JWT tokens using TokenObtainPairSerializer
-        from rest_framework_simplejwt.tokens import RefreshToken
-        refresh = RefreshToken.for_user(user)
-        
-        return Response({
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-            "detail": "Login successful.",
-            "user": UserSerializer(user).data,
-        })
-
-
-class ResendLoginOTPView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        user_id = request.data.get("user_id")
-
-        if not user_id:
-            return Response(
-                {"detail": "User ID is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            user = User.objects.get(id=user_id, role="CITIZEN", is_active=True)
-        except User.DoesNotExist:
-            return Response(
-                {"detail": "User not found."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        email_sent = send_login_otp_email(user)
-        details = otp_delivery_detail("OTP sent to your email.")
-        return otp_delivery_response(
-            email_sent,
-            details,
-            dev_otp_payload(user, "login_otp"),
-        )
-
-
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
@@ -190,84 +62,6 @@ class RegisterView(generics.CreateAPIView):
                 "detail": "Account created successfully. You can sign in now.",
             },
             status=status.HTTP_201_CREATED,
-        )
-
-
-class VerifyEmailView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request, uidb64=None, token=None):
-        identifier = request.data.get("identifier") or request.data.get("email")
-        otp = request.data.get("otp")
-        try:
-            user = verify_email_otp(identifier, otp)
-        except User.DoesNotExist:
-            return Response(
-                {"detail": "No citizen account found for this email or username."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except signing.SignatureExpired:
-            return Response(
-                {"detail": "OTP expired. Please request a new OTP."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except (ValueError, TypeError, signing.BadSignature):
-            return Response(
-                {"detail": "Invalid OTP. Please check your email and try again."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not user.is_verified:
-            user.is_verified = True
-        user.email_verification_otp = ""
-        user.email_verification_otp_created_at = None
-        user.save(update_fields=["is_verified", "email_verification_otp", "email_verification_otp_created_at"])
-        return Response({"detail": "Email verified successfully. You can sign in now."})
-
-    def get(self, request, uidb64, token):
-        try:
-            user = verify_email_token(uidb64, token)
-        except (User.DoesNotExist, ValueError, TypeError, signing.BadSignature, signing.SignatureExpired):
-            return Response(
-                {"detail": "Verification link is invalid or expired."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not user.is_verified:
-            user.is_verified = True
-        user.email_verification_otp = ""
-        user.email_verification_otp_created_at = None
-        user.save(update_fields=["is_verified", "email_verification_otp", "email_verification_otp_created_at"])
-        return Response({"detail": "Email verified successfully. You can sign in now."})
-
-
-class ResendVerificationEmailView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        identifier = str(request.data.get("identifier") or request.data.get("email") or "").strip()
-        if not identifier:
-            return Response(
-                {"detail": "Enter your registered email or username."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user = User.objects.filter(
-            Q(email__iexact=identifier) | Q(username__iexact=identifier),
-            role="CITIZEN",
-            is_active=True,
-        ).first()
-        if not user:
-            return Response({"detail": "If the account exists, a verification email has been sent."})
-        if user.is_verified:
-            return Response({"detail": "This email is already verified."})
-
-        email_sent = send_verification_email(user)
-        details = otp_delivery_detail("Verification OTP sent. Please check your inbox.")
-        return otp_delivery_response(
-            email_sent,
-            details,
-            dev_otp_payload(user, "email_verification_otp"),
         )
 
 
@@ -321,33 +115,6 @@ class AdminDepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 # ─── Citizen Complaints ─────────────────────────────────────────────────────
-
-
-class ComplaintRequestOTPView(APIView):
-    permission_classes = [IsAuthenticated, IsCitizen]
-
-    def post(self, request):
-        if getattr(settings, "EMAIL_VERIFICATION_REQUIRED", True) and not request.user.is_verified:
-            return Response(
-                {"detail": "Please verify your email before requesting a complaint OTP."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        if not request.user.email:
-            return Response(
-                {"detail": "Your account does not have an email address."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        email_sent = send_complaint_submission_otp_email(request.user)
-        details = otp_delivery_detail("Complaint submission OTP sent to your registered email.")
-        return otp_delivery_response(
-            email_sent,
-            details,
-            {
-                "email": request.user.email,
-                **dev_otp_payload(request.user, "complaint_submission_otp"),
-            },
-        )
 
 
 class CitizenComplaintListCreateView(generics.ListCreateAPIView):
