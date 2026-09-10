@@ -29,6 +29,11 @@ from .permissions import IsAdmin, IsOfficer, IsCitizen
 
 class VerifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
+        identifier = (attrs.get("username") or "").strip()
+        if "@" in identifier:
+            user = User.objects.filter(email__iexact=identifier).first()
+            if user:
+                attrs["username"] = user.username
         data = super().validate(attrs)
         data["user"] = UserSerializer(self.user).data
         return data

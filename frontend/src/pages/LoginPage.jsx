@@ -66,7 +66,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {verificationMessage && step === "credentials" && (
+          {verificationMessage && (
             <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
               <div className="flex items-start gap-2">
                 <MailCheck className="mt-0.5 shrink-0" size={17} />
