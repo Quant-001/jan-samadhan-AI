@@ -71,4 +71,6 @@ npm run dev
 
 - Frontend deployment: Vercel, configured by `frontend/vercel.json`.
 - Backend deployment: Render, configured by the root `render.yaml`.
+- In Render, set the backend `ADMIN_PASSWORD` environment variable before deploying. The `seed` command creates or resets the `admin` account with that value. For example, set it to `Admin@2026` if you want to use the documented test login.
+- Local PostgreSQL accounts are separate from the Render database; creating a local account does not create it in production.
 - Do not commit `backend/.env`, uploaded media, model caches, or build output.

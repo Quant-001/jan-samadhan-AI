@@ -1,6 +1,6 @@
 import os
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from grievance_app.models import Department, User
 
 ADMIN_USERNAME = "admin"
@@ -12,8 +12,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         if not ADMIN_PASSWORD:
-            self.stderr.write("Set ADMIN_PASSWORD before running seed.")
-            return
+            raise CommandError("ADMIN_PASSWORD must be set before running seed.")
         departments = [
             {"name": "Electricity Department", "code": "ELECTRICITY", "email": "electricity@jansamadhan.in", "government_level": "STATE"},
             {"name": "Water Supply Department", "code": "WATER", "email": "water@jansamadhan.in", "government_level": "STATE"},
