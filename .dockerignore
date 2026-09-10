@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/build
+**/__pycache__
+**/*.py[cod]
+backend/media
+backend/staticfiles
+frontend/.vite
+*.log
